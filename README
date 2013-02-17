@@ -14,7 +14,7 @@ SYNOPSIS
 package require Tcl 8.5
 package require msgpack ?1.0.0?
 
-msgpack packer ?packerName?
+msgpack packer 
 packerName data
 packerName destroy
 packerName pack array size
@@ -85,15 +85,12 @@ Packer
 Packer PACKAGE COMMANDS
 -----------------------
 
-    msgpack packer ?packerName?
+    msgpack packer
 
-        This command creates a new MessagePack packer object and associated Tcl
-        object command whose name is packerName if specified or auto generated
-        if not specified. The object command will be created under the current
-        namespace if the packerName is not fully qualified, and in the specified
-        namespace otherwise. The object command name is returned by this
-        command. The object command methods are explained in section -> Packer
-        OBJECT METHODS.
+        This command creates a new MessagePack packer object command whose name
+        auto generated. The object command name is returned by this command. The
+        object command methods are explained in section -> Packer OBJECT
+        METHODS.
 
 Packer OBJECT METHODS
 ---------------------

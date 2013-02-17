@@ -4,13 +4,10 @@
 
 [list_begin definitions]
 
-[call [cmd {msgpack packer}] [opt [arg packerName]]]
+[call [cmd {msgpack packer}]]
 
-This command creates a new MessagePack packer object and associated Tcl object
-command whose name is [arg packerName] if specified or auto generated if not
-specified. The object command will be created under the current namespace if the
-[arg packerName] is not fully qualified, and in the specified namespace
-otherwise. The object command name is returned by this command. The object
+This command creates a new MessagePack packer object command whose name auto
+generated. The object command name is returned by this command. The object
 command methods are explained in section [sectref {Packer OBJECT METHODS}].
 
 [list_end]
