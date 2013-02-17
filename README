@@ -1,0 +1,358 @@
+
+msgpack - A pure Tcl implementation of the MessagePack object serialization library
+Generated from file '' by tcllib/doctools with format 'text'
+msgpack(n) 1.0.0  "A pure Tcl implementation of the MessagePack object serialization library"
+
+NAME
+====
+
+msgpack - msgpack Package Reference
+
+SYNOPSIS
+========
+
+package require Tcl 8.5
+package require msgpack ?1.0.0?
+
+msgpack packer ?packerName?
+packerName data
+packerName destroy
+packerName pack array size
+packerName pack boolean data
+packerName pack dict keyType valueType data
+packerName pack double data
+packerName pack false
+packerName pack fix_int8 data
+packerName pack fix_int16 data
+packerName pack fix_int32 data
+packerName pack fix_int64 data
+packerName pack fix_uint8 data
+packerName pack fix_uint16 data
+packerName pack fix_uint32 data
+packerName pack fix_uint64 data
+packerName pack float data
+packerName pack int data
+packerName pack int8 data
+packerName pack int16 data
+packerName pack int32 data
+packerName pack int64 data
+packerName pack list elemenType data
+packerName pack long data
+packerName pack long_long data
+packerName pack map size
+packerName pack nil
+packerName pack raw size
+packerName pack raw_body data
+packerName pack short data
+packerName pack string data
+packerName pack tclarray keyType valueType arrayName
+packerName pack true
+packerName pack uint8 data
+packerName pack uint16 data
+packerName pack uint32 data
+packerName pack uint64 data
+packerName pack unsigned_int data
+packerName pack unsigned_long data
+packerName pack unsigned_long_long data
+packerName pack unsigned_short data
+packerName reset
+msgpack unpack data
+msgpack map2dict 
+msgpack map2array 
+msgpack array2list 
+
+DESCRIPTION
+===========
+
+The _msgpack_ package is a pure Tcl implementation the MessagePack object
+serialization library. You can find the wrapper code at GitHub:
+<URL:https://github.com/jdc8/msgpack>. MessagePack can be found at
+<URL:http://msgpack.org/>.
+
+Use this documentation in combination with the MessagePack documentation for
+more details.
+
+Building
+========
+
+Requirements:
+
+    Tcl 8.5 or 8.6
+
+Packer
+======
+
+Packer PACKAGE COMMANDS
+-----------------------
+
+    msgpack packer ?packerName?
+
+        This command creates a new MessagePack packer object and associated Tcl
+        object command whose name is packerName if specified or auto generated
+        if not specified. The object command will be created under the current
+        namespace if the packerName is not fully qualified, and in the specified
+        namespace otherwise. The object command name is returned by this
+        command. The object command methods are explained in section -> Packer
+        OBJECT METHODS.
+
+Packer OBJECT METHODS
+---------------------
+
+    packerName data
+
+        Return the packed data.
+
+    packerName destroy
+
+        Destroy the packer and delete the associated Tcl object command.
+
+    packerName pack array size
+
+        Add array size to packed data. Must be followed by size calls to method
+        pack to add the array elements to the packed data.
+
+    packerName pack boolean data
+
+        Add a boolean to the packed data. Is equivalent calling methods pack
+        true or pack false.
+
+    packerName pack dict keyType valueType data
+
+        Add a dict to the packed data. This is equivalent to calling method pack
+        map with the dict size as argument, followed by calling method pack
+        keyType and method pack valueType for each key/value pair in the dict.
+
+    packerName pack double data
+
+        Add a double to the packed data.
+
+    packerName pack false
+
+        Add a boolean with value false to the packed data.
+
+    packerName pack fix_int8 data
+
+        Add an 8 bit integer to the packed data.
+
+    packerName pack fix_int16 data
+
+        Add a 16 bit integer to the packed data.
+
+    packerName pack fix_int32 data
+
+        Add a 32 bit integer to the packed data.
+
+    packerName pack fix_int64 data
+
+        Add a 64 bit integer to the packed data.
+
+    packerName pack fix_uint8 data
+
+        Add an 8 bit unsigned integer to the packed data.
+
+    packerName pack fix_uint16 data
+
+        Add a 16 bit unsigned integer to the packed data.
+
+    packerName pack fix_uint32 data
+
+        Add a 32 bit unsigned integer to the packed data.
+
+    packerName pack fix_uint64 data
+
+        Add a 64 bit unsigned integer to the packed data.
+
+    packerName pack float data
+
+        Add a float to the packed data.
+
+    packerName pack int data
+
+        Add an integer to the packed data, let the packer choose the best
+        packing.
+
+    packerName pack int8 data
+
+        Add an 8 bit integer to the packed data, let the packer choose the best
+        packing.
+
+    packerName pack int16 data
+
+        Add a 16 bit integer to the packed data, let the packer choose the best
+        packing.
+
+    packerName pack int32 data
+
+        Add a 32 bit integer to the packed data, let the packer choose the best
+        packing.
+
+    packerName pack int64 data
+
+        Add a 64 bit integer to the packed data, let the packer choose the best
+        packing.
+
+    packerName pack list elemenType data
+
+        Add a Tcl list to the packed data. This is equivalent to calling method
+        pack array with the list length as argument followed by calls to method
+        pack elementType for each list element.
+
+    packerName pack long data
+
+        Add a long integer to the packed data.
+
+    packerName pack long_long data
+
+        Add a long long integer to the packed data.
+
+    packerName pack map size
+
+        Add the map size to the packed data. Must be followed by size pairs of
+        calls to method pack to add the keys and values to the packed data.
+
+    packerName pack nil
+
+        Add a nil to the packed data.
+
+    packerName pack raw size
+
+        Add the size of a raw body to the packed data. Must precede a call to
+        method pack raw_body.
+
+    packerName pack raw_body data
+
+        Add raw data to the packed data. Must be preceded by a call to method
+        pack raw.
+
+    packerName pack short data
+
+        Add a short integer to the packed data.
+
+    packerName pack string data
+
+        Add a string to the packed data. Is equivalent to calling methods pack
+        raw and pack raw_body.
+
+    packerName pack tclarray keyType valueType arrayName
+
+        Add a Tcl array to the packed data. This is equivalent to calling method
+        pack map with the array size as argument, followed by calling method
+        pack keyType and method pack valueType for each key/value pair in the
+        array.
+
+    packerName pack true
+
+        Add a boolean with value true to the packed data.
+
+    packerName pack uint8 data
+
+        Add an 8 bit unsigned integer to the packed data, let the packer choose
+        the best packing.
+
+    packerName pack uint16 data
+
+        Add a 16 bit unsigned integer to the packed data, let the packer choose
+        the best packing.
+
+    packerName pack uint32 data
+
+        Add a 32 bit unsigned integer to the packed data, let the packer choose
+        the best packing.
+
+    packerName pack uint64 data
+
+        Add a 64 bit unsigned integer to the packed data, let the packer choose
+        the best packing.
+
+    packerName pack unsigned_int data
+
+        Add an unsigned integer to the packed data.
+
+    packerName pack unsigned_long data
+
+        Add a unsigned long integer to the packed data.
+
+    packerName pack unsigned_long_long data
+
+        Add an unsigned long long integer to the packed data.
+
+    packerName pack unsigned_short data
+
+        Add an unsigned short integer to the packed data.
+
+    packerName reset
+
+        Reset the packer.
+
+Unpacker
+========
+
+    msgpack unpack data
+
+        Unpack the specified data. A list with unpacked type and value
+        information pairs is returned. Type information can be one of the
+        following:
+
+        nil
+
+        boolean
+
+        integer
+
+        double
+
+        raw
+
+        array
+
+        map
+
+        Values can be nested type/value list.
+
+Utilities
+=========
+
+    msgpack map2dict
+
+        Convert a MessagePack map as retuned by the unpack command into a Tcl
+        dict.
+
+    msgpack map2array
+
+        Convert a MessagePack map as retuned by the unpack command into a Tcl
+        array.
+
+    msgpack array2list
+
+        Convert a MessagePack array as retuned by the unpack command into a Tcl
+        list.
+
+Bugs, ideas, feedback
+=====================
+
+This document, and the package it describes, will undoubtedly contain bugs and
+other problems. Please report such at the _Github tracker_
+<URL:https://github.com/jdc8/msgpack/issues>. Please also report any ideas for
+enhancements you may have for either package and/or documentation.
+
+License
+=======
+
+The wrapper code is relased under the BSD license (specifically Modified BSD aka
+New BSD aka 3-clause BSD). Check COPYING.BSD for more info about the license
+used for this wrapper.
+
+KEYWORDS
+========
+
+MessagePack, msgpack, serialization
+
+CATEGORY
+========
+
+Serialization
+
+COPYRIGHT
+=========
+
+Copyright (c) Jos Decoster <jos.decoster@gmail.com>
