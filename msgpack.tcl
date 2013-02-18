@@ -40,6 +40,52 @@ namespace eval $::tclmsgpacknamespace {
 	return $cmd
     }
 
+    proc unpacker {stream callback} {
+	variable packerId
+	variable data
+	variable namespacename
+	variable datastream
+	variable datacallback
+	set id $packerId
+	incr packerId
+	set data($id) ""
+	set datastream($id) $stream
+	set datacallback($id) $callback
+	set cmd ${namespacename}::msgunpacker$id
+	proc $cmd {cmd args} [format {
+	    variable data
+	    variable datastream
+	    variable datacallback
+	    switch -exact -- $cmd {
+		readable {
+		    if {[eof $datastream(%1$s)]} {
+			# Maybe call callback here to signal stream is close
+			{*}$datacallback(%1$s) eof $datastream(%1$s)
+			unset data(%1$s)
+			unset datastream(%1$s)
+			unset datacallback(%1$s)
+			rename %2$s {}
+		    } else {
+			append data(%1$s) [read $datastream(%1$s)]
+			lassign [%3$s::unpack_streaming $data(%1$s)] l data(%1$s)
+			foreach i $l {
+			    {*}$datacallback(%1$s) data $i
+			}
+		    }
+		}
+		destroy {
+		    unset data(%1$s)
+		    unset datastream(%1$s)
+		    unset datacallback(%1$s)
+		    rename %2$s {}
+		}
+	    }
+	} $id $cmd $namespacename]
+	chan configure $stream -blocking 0 -buffering none -translation binary -encoding binary
+	chan event $stream readable [list $cmd readable]
+	return $cmd
+    }
+
     proc pack {type {value 0} {value1 ""} {value2 ""}} {
 	switch -exact -- $type {
 	    short { return [pack int16 $value] }
@@ -206,6 +252,207 @@ namespace eval $::tclmsgpacknamespace {
 		}
 	    }
 	}
+    }
+
+    proc unpack_streaming {s {nested 0}} {
+	set orig_s $s
+	set l {}
+	while {[string length $s]} {
+	    binary scan $s c c
+	    set tc [expr {$c & 0xFF}]
+	    set s [string range $s 1 end]
+	    if {$tc < 0x80} {
+		# Positive FixNum
+		lappend l [list integer [expr {$c & 0x7F}]]
+	    } elseif {($tc & 0xE0) >= 0xE0} {
+		# Negative FixNum
+		binary scan [binary format c [expr {($c & 0x1F) | 0xE0}]] c c
+		lappend l [list integer $c]
+	    } elseif {$tc >= 0x80 && $tc <= 0x8F} {
+		# FixMap
+		set n [expr {$tc & 0xF}]
+		set a {}
+		for {set i 0} {$i < $n} {incr i} {
+		    lassign [unpack_streaming $s 1] al s
+		    if {[llength $al] == 0} { return [list {} $orig_s] }
+		    lappend a {*}$al
+		    lassign [unpack_streaming $s 1] al s
+		    if {[llength $al] == 0} { return [list {} $orig_s] }
+		    lappend a {*}$al
+		}
+		lappend l [list map $a]
+	    } elseif {$tc >= 0x90 && $tc <= 0x9F} {
+		# FixArray
+		set n [expr {$tc & 0xF}]
+		set a {}
+		for {set i 0} {$i < $n} {incr i} {
+		    lassign [unpack_streaming $s 1] al s
+		    if {[llength $al] == 0} { return [list {} $orig_s] }
+		    lappend a {*}$al
+		}
+		lappend l [list array $a]
+	    } elseif {$tc >= 0xA0 && $tc <= 0xBF} {
+		# FixRaw
+		set n [expr {$tc & 0xF}]
+		if {[string length $s] < $n} { return [list {} $orig_s] }
+		binary scan $s a$n c
+		lappend l [list raw $c]
+		set s [string range $s $n end]
+	    } else {
+		if {$tc == 0xC0} {
+		    # nil
+		    lappend l nil
+		} elseif {$tc == 0xC2} {
+		    # false
+		    lappend l [list boolean 0]
+		} elseif {$tc == 0xC3} {
+		    # true
+		    lappend l [list boolean 1]
+		} elseif {$tc == 0xCA} {
+		    # float
+		    if {[string length $s] < 4} { return [list {} $orig_s] }
+		    binary scan $s R c
+		    set s [string range $s 4 end]
+		    lappend l [list double $c]
+		} elseif {$tc == 0xCB} {
+		    # double
+		    if {[string length $s] < 8} { return [list {} $orig_s] }
+		    binary scan $s Q c
+		    set s [string range $s 8 end]
+		    lappend l [list double $c]
+		} elseif {$tc == 0xCC} {
+		    # uint8
+		    if {[string length $s] < 1} { return [list {} $orig_s] }
+		    binary scan $s c c
+		    set s [string range $s 1 end]
+		    lappend l [list integer [expr {$c & 0xFF}]]
+		} elseif {$tc == 0xCD} {
+		    # uint16
+		    if {[string length $s] < 2} { return [list {} $orig_s] }
+		    binary scan $s S c
+		    set s [string range $s 2 end]
+		    lappend l [list integer [expr {$c & 0xFFFF}]]
+		} elseif {$tc == 0xCE} {
+		    # uint32
+		    if {[string length $s] < 4} { return [list {} $orig_s] }
+		    binary scan $s I c
+		    set s [string range $s 4 end]
+		    lappend l [list integer [expr {$c & 0xFFFFFFFF}]]
+		} elseif {$tc == 0xCF} {
+		    # uint64
+		    if {[string length $s] < 8} { return [list {} $orig_s] }
+		    binary scan $s W c
+		    set s [string range $s 8 end]
+		    lappend l [list integer [expr {$c & 0xFFFFFFFFFFFFFFFF}]]
+		} elseif {$tc == 0xD0} {
+		    # int8
+		    if {[string length $s] < 1} { return [list {} $orig_s] }
+		    binary scan $s c c
+		    set s [string range $s 1 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xD1} {
+		    # int16
+		    if {[string length $s] < 2} { return [list {} $orig_s] }
+		    binary scan $s S c
+		    set s [string range $s 2 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xD2} {
+		    # int32
+		    if {[string length $s] < 4} { return [list {} $orig_s] }
+		    binary scan $s I c
+		    set s [string range $s 4 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xD3} {
+		    # int64
+		    if {[string length $s] < 8} { return [list {} $orig_s] }
+		    binary scan $s W c
+		    set s [string range $s 8 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xDA} {
+		    # raw 16
+		    if {[string length $s] < 2} { return [list {} $orig_s] }
+		    binary scan $s S n
+		    set n [expr {$n & 0xFFFF}]
+		    set s [string range $s 2 end]
+		    if {[string length $s] < $n} { return [list {} $orig_s] }
+		    binary scan $s a$n c
+		    lappend l [list raw $c]
+		    set s [string range $s $n end]
+		} elseif {$tc == 0xDB} {
+		    # raw 32
+		    if {[string length $s] < 4} { return [list {} $orig_s] }
+		    binary scan $s I n
+		    set n [expr {$n & 0xFFFFFFFF}]
+		    set s [string range $s 4 end]
+		    if {[string length $s] < $n} { return [list {} $orig_s] }
+		    binary scan $s a$n c
+		    lappend l [list raw $c]
+		    set s [string range $s $n end]
+		} elseif {$tc == 0xDC} {
+		    # array 16
+		    if {[string length $s] < 2} { return [list {} $orig_s] }
+		    binary scan $s S n
+		    set n [expr {$n & 0xFFFF}]
+		    set s [string range $s 2 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lassign [unpack_streaming $s 1] al s
+			if {[llength $al] == 0} { return [list {} $orig_s] }
+			lappend a {*}$al
+		    }
+		    lappend l [list array $a]
+		} elseif {$tc == 0xDD} {
+		    # array 32
+		    if {[string length $s] < 4} { return [list {} $orig_s] }
+		    binary scan $s I n
+		    set n [expr {$n & 0xFFFFFFFF}]
+		    set s [string range $s 4 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lassign [unpack_streaming $s 1] al s
+			if {[llength $al] == 0} { return [list {} $orig_s] }
+			lappend a {*}$al
+		    }
+		    lappend l [list array $a]
+		} elseif {$tc == 0xDE} {
+		    # map 16
+		    if {[string length $s] < 2} { return [list {} $orig_s] }
+		    binary scan $s S n
+		    set n [expr {$n & 0xFFFF}]
+		    set s [string range $s 2 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lassign [unpack_streaming $s 1] al s
+			if {[llength $al] == 0} { return [list {} $orig_s] }
+			lappend a {*}$al
+			lassign [unpack_streaming $s 1] al s
+			if {[llength $al] == 0} { return [list {} $orig_s] }
+			lappend a {*}$al
+		    }
+		    lappend l [list map $a]
+		} elseif {$tc == 0xDF} {
+		    # map 32
+		    if {[string length $s] < 4} { return [list {} $orig_s] }
+		    binary scan $s I n
+		    set n [expr {$n & 0xFFFFFFFF}]
+		    set s [string range $s 4 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lassign [unpack_streaming $s 1] al s
+			if {[llength $al] == 0} { return [list {} $orig_s] }
+			lappend a {*}$al
+			lassign [unpack_streaming $s 1] al s
+			if {[llength $al] == 0} { return [list {} $orig_s] }
+			lappend a {*}$al
+		    }
+		    lappend l [list map $a]
+		}
+	    }
+	    if {$nested} {
+		break
+	    }
+	}
+	return [list $l $s]
     }
 
     proc unpack {snm {nested 0}} {
