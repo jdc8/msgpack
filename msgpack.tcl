@@ -12,7 +12,6 @@ namespace eval $::tclmsgpacknamespace {
     variable namespacename $::tclmsgpacknamespace
 
     proc packer {} {
-	puts "My packer!"
 	variable packerId
 	variable data
 	variable namespacename
