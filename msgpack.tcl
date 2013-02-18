@@ -32,6 +32,7 @@ namespace eval $::tclmsgpacknamespace {
 		    set data(%1$s) ""
 		}
 		destroy {
+		    unset data(%1$s)
 		    rename %2$s {}
 		}
 	    }
