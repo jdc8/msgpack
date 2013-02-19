@@ -1,264 +1,239 @@
 package require Tcl 8.6
 package provide msgpack 1.0.0
 
-namespace eval msgpack {
+namespace eval msgpack {}
 
-    variable packerId 0
+oo::class create msgpack::packer {
 
-    proc packer {} {
-	variable packerId
-	variable data
-	set id $packerId
-	incr packerId
-	set data($id) ""
-	set cmd msgpack::msgpacker$id
-	proc $cmd {cmd args} [format {
-	    variable data
-	    switch -exact -- $cmd {
-		pack {
-		    append data(%1$s) [pack {*}$args]
-		}
-		data {
-		    return $data(%1$s)
-		}
-		reset {
-		    set data(%1$s) ""
-		}
-		destroy {
-		    unset data(%1$s)
-		    rename %2$s {}
-		}
-	    }
-	} $id $cmd]
-	return $cmd
+    variable data
+
+    constructor {args} {
+	set data ""
     }
 
-    proc unpacker {stream callback} {
-	variable packerId
-	variable data
-	variable datastream
-	variable datacallback
-	set id $packerId
-	incr packerId
-	set coro msgpack::msgunpacker$id
-	set data($id) ""
-	set datastream($id) $stream
-	set datacallback($id) $callback
-	coroutine $coro msgpack::unpack_coro $id 0 1
-	chan configure $stream -blocking 0 -buffering none -translation binary -encoding binary
-	chan event $stream readable $coro
-    }
+    destructor {}
 
-    proc pack {type {value 0} {value1 ""} {value2 ""}} {
+    method data {} { return $data }
+
+    method reset {} { set data "" }
+
+    method pack {type {value 0} {value1 ""} {value2 ""}} {
 	switch -exact -- $type {
-	    short { return [pack int16 $value] }
-	    int { return [pack int32 $value] }
-	    long { return [pack int32 $value] }
-	    long_long { return [pack int64 $value] }
-	    unsigned_short { return [pack uint16 $value] }
-	    unsigned_int { return [pack uint32 $value] }
-	    unsigned_long { return [pack uint32 $value] }
-	    unsigned_long_long { return [pack uint64 $value] }
-	    fixnumpos { return [binary format c [expr {$value & 0x7F}]] }
-	    fixnumneg { return [binary format c [expr {($value & 0x1F) | 0xE0}]] }
+	    short { append data [my pack int16 $value] }
+	    int { append data [my pack int32 $value] }
+	    long { append data [my pack int32 $value] }
+	    long_long { append data [my pack int64 $value] }
+	    unsigned_short { append data [my pack uint16 $value] }
+	    unsigned_int { append data [my pack uint32 $value] }
+	    unsigned_long { append data [my pack uint32 $value] }
+	    unsigned_long_long { append data [my pack uint64 $value] }
+	    fixnumpos { append data [binary format c [expr {$value & 0x7F}]] }
+	    fixnumneg { append data [binary format c [expr {($value & 0x1F) | 0xE0}]] }
 	    int8 {
 		if {$value < -32} {
-		    return [pack fix_int8 $value]
+		    append data [my pack fix_int8 $value]
 		} else {
 		    if {$value < 0} {
-			return [pack fixnumneg $value]
+			append data [my pack fixnumneg $value]
 		    } else {
 			if {$value < 128} {
-			    return [pack fixnumpos $value]
+			    append data [my pack fixnumpos $value]
 			} else {
-			    return [pack fix_int8 $value]
+			    append data [my pack fix_int8 $value]
 			}
 		    }
 		}
 	    }
 	    int16 {
 		if {$value < -128} {
-		    return [pack fix_int16 $value]
+		    append data [my pack fix_int16 $value]
 		} elseif {$value < 128} {
-		    return [pack int8 $value]
+		    append data [my pack int8 $value]
 		} elseif {$value < 256} {
-		    return [pack fix_uint8 $value]
+		    append data [my pack fix_uint8 $value]
 		} else {
-		    return [pack fix_uint16 $value]
+		    append data [my pack fix_uint16 $value]
 		}
 	    }
 	    int32 {
 		if {$value < -32768} {
-		    return [pack fix_int32 $value]
+		    append data [my pack fix_int32 $value]
 		} elseif {$value < 65536} {
-		    return [pack int16 $value]
+		    append data [my pack int16 $value]
 		} else {
-		    return [pack fix_uint32 $value]
+		    append data [my pack fix_uint32 $value]
 		}
 	    }
 	    int64 {
 		if {$value < -2147483648} {
-		    return [pack fix_int64 $value]
+		    append data [my pack fix_int64 $value]
 		} elseif {$value < 4294967296} {
-		    return [pack int32 $value]
+		    append data [my pack int32 $value]
 		} else {
-		    return [pack fix_uint64 $value]
+		    append data [my pack fix_uint64 $value]
 		}
 	    }
 	    uint8 {
 		set value [expr {$value & 0xFF}]
 		if {$value < 128} {
-		    return [pack fixnumpos $value]
+		    append data [my pack fixnumpos $value]
 		} else {
-		    return [pack fix_uint8 $value]
+		    append data [my pack fix_uint8 $value]
 		}
 	    }
 	    uint16 {
 		set value [expr {$value & 0xFFFF}]
 		if {$value < 256} {
-		    return [pack uint8 $value]
+		    append data [my pack uint8 $value]
 		} else {
-		    return [pack fix_uint16 $value]
+		    append data [my pack fix_uint16 $value]
 		}
 	    }
 	    uint32 {
 		set value [expr {$value & 0xFFFFFFFF}]
 		if {$value < 65536} {
-		    return [pack int16 $value]
+		    append data [my pack int16 $value]
 		} else {
-		    return [pack fix_uint32 $value]
+		    append data [my pack fix_uint32 $value]
 		}
 	    }
 	    uint64 {
 		set value [expr {$value & 0xFFFFFFFFFFFFFFFF}]
 		if {$value < 4294967296} {
-		    return [pack int32 $value]
+		    append data [my pack int32 $value]
 		} else {
-		    return [pack fix_uint64 $value]
+		    append data [my pack fix_uint64 $value]
 		}
 	    }
-	    fix_int8 { return [binary format cc 0xD0 [expr {$value & 0xFF}]] }
-	    fix_int16 { return [binary format cS 0xD1 [expr {$value & 0xFFFF}]] }
-	    fix_int32 { return [binary format cI 0xD2 [expr {$value & 0xFFFFFFFF}]] }
-	    fix_int64 { return [binary format cW 0xD3 [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
-	    fix_uint8 { return [binary format cc 0xCC [expr {$value & 0xFF}]] }
-	    fix_uint16 { return [binary format cS 0xCD [expr {$value & 0xFFFF}]] }
-	    fix_uint32 { return [binary format cI 0xCE [expr {$value & 0xFFFFFFFF}]] }
-	    fix_uint64 { return [binary format cW 0xCF [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
-	    float { return [binary format cR 0xCA $value] }
-	    double { return [binary format cQ 0xCB $value] }
-	    nil { return [binary format c 0xC0] }
-	    true { return [binary format c 0xC3] }
-	    false { return [binary format c 0xC2] }
+	    fix_int8 { append data [binary format cc 0xD0 [expr {$value & 0xFF}]] }
+	    fix_int16 { append data [binary format cS 0xD1 [expr {$value & 0xFFFF}]] }
+	    fix_int32 { append data [binary format cI 0xD2 [expr {$value & 0xFFFFFFFF}]] }
+	    fix_int64 { append data [binary format cW 0xD3 [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
+	    fix_uint8 { append data [binary format cc 0xCC [expr {$value & 0xFF}]] }
+	    fix_uint16 { append data [binary format cS 0xCD [expr {$value & 0xFFFF}]] }
+	    fix_uint32 { append data [binary format cI 0xCE [expr {$value & 0xFFFFFFFF}]] }
+	    fix_uint64 { append data [binary format cW 0xCF [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
+	    float { append data [binary format cR 0xCA $value] }
+	    double { append data [binary format cQ 0xCB $value] }
+	    nil { append data [binary format c 0xC0] }
+	    true { append data [binary format c 0xC3] }
+	    false { append data [binary format c 0xC2] }
 	    array {
 		if {$value < 16} {
-		    return [binary format c [expr {0x90 | $value}]]
+		    append data [binary format c [expr {0x90 | $value}]]
 		} elseif {$value < 65536} {
-		    return [binary format cS 0xDC $value]
+		    append data [binary format cS 0xDC $value]
 		} else {
-		    return [binary format cI 0xDD $value]
+		    append data [binary format cI 0xDD $value]
 		}
 	    }
 	    list {
-		set r [pack array [llength $value1]]
+		set r [my pack array [llength $value1]]
 		foreach e $value1 {
-		    append r [pack $value $e]
+		    append r [my pack $value $e]
 		}
-		return $r
+		append data $r
 	    }
 	    map {
 		if {$value < 16} {
-		    return [binary format c [expr {0x80 | $value}]]
+		    append data [binary format c [expr {0x80 | $value}]]
 		} elseif {$value < 65536} {
-		    return [binary format cS 0xDE $value]
+		    append data [binary format cS 0xDE $value]
 		} else {
-		    return [binary format cI 0xDF $value]
+		    append data [binary format cI 0xDF $value]
 		}
 	    }
 	    tcl_array {
 		upvar $value2 a
-		set r [pack map [array size a]]
+		set r [my pack map [array size a]]
 		foreach k [lsort -dictionary [array names a]] {
-		    append r [pack $value $k]
-		    append r [pack $value1 $a($k)]
+		    append r [my pack $value $k]
+		    append r [my pack $value1 $a($k)]
 		}
-		return $r
+		append data $r
 	    }
 	    dict {
-		set r [pack map [dict size $value2]]
+		set r [my pack map [dict size $value2]]
 		dict for {k v} $value2 {
-		    append r [pack $value $k]
-		    append r [pack $value1 $v]
+		    append r [my pack $value $k]
+		    append r [my pack $value1 $v]
 		}
-		return $r
+		append data $r
 	    }
 	    raw {
 		if {$value < 32} {
-		    return [binary format c [expr {0xA0 | $value}]]
+		    append data [binary format c [expr {0xA0 | $value}]]
 		} elseif {$value < 65536} {
-		    return [binary format cS 0xDA $value]
+		    append data [binary format cS 0xDA $value]
 		} else {
-		    return [binary format cI 0xDB $value]
+		    append data [binary format cI 0xDB $value]
 		}
 	    }
 	    raw_body {
-		return [binary format a* $value]
+		append data [binary format a* $value]
 	    }
 	    string {
 		set n [string length $value]
 		if {$n < 32} {
-		    return [binary format ca* [expr {0xA0 | $n}] $value]
+		    append data [binary format ca* [expr {0xA0 | $n}] $value]
 		} elseif {$n < 65536} {
-		    return [binary format cSa* 0xDA $n $value]
+		    append data [binary format cSa* 0xDA $n $value]
 		} else {
-		    return [binary format cIa* 0xDB $n $value]
+		    append data [binary format cIa* 0xDB $n $value]
 		}
 	    }
 	}
+	return
+    }
+}
+
+oo::class create msgpack::unpacker {
+
+    variable data stream callback
+
+    constructor {args} {
     }
 
-    proc unpack {s {callback {}}} {
-	variable packerId
-	variable data
-	variable datacallback
-	set id $packerId
-	incr packerId
-	set data($id) $s
-	set datacallback($id) $callback
-	set l [unpack_coro $id 0 0]
-	unset data($id)
-	unset datacallback($id)
+    destructor {}
+
+    method unpack_stream {istream icallback} {
+	set coro ::msgpack::ups[clock milliseconds]
+	set data ""
+	set stream $istream
+	set callback $icallback
+	coroutine $coro [self] unpack_coro 0 1
+	chan configure $stream -blocking 0 -buffering none -translation binary -encoding binary
+	chan event $stream readable $coro
+    }
+
+    method unpack_string {idata {icallback {}}} {
+	set data $idata
+	set callback $icallback
+	set l [my unpack_coro 0 0]
 	if {[llength $callback] == 0} {
 	    return $l
 	}
     }
 
-    proc need_coro {id n} {
-	variable data
-	variable datastream
-	variable datacallback
+    method need_coro {n} {
 	while {1} {
-	    if {[eof $datastream($id)]} {
-		{*}$datacallback($id) eof $datastream($id)
-		unset data($id)
-		unset datastream($id)
-		unset datacallback($id)
+	    if {[eof $stream]} {
+		{*}$callback eof $stream
 		return -code return {}
 	    }
-	    append data($id) [read $datastream($id)]
-	    if {[string length $data($id)] >= $n} break
+	    append data [read $stream]
+	    if {[string length $data] >= $n} break
 	    yield
 	}
     }
 
-    proc need_string {id n} {
-	variable data
-	if {[string length $data($id)] < $n} {
-	    error "input string not long enough, need $n bytes, only [string length $data($id)] left"
+    method need_string {n} {
+	if {[string length $data] < $n} {
+	    error "input string not long enough, need $n byte(s), only [string length $data] left"
 	}
     }
 
-    proc unpack_coro {id nested coro} {
+    method unpack_coro {nested coro} {
 	if {$coro} {
 	    if {!$nested} {
 		# Yield creation
@@ -268,14 +243,12 @@ namespace eval msgpack {
 	} else {
 	    set need_proc need_string
 	}
-	variable data
-	variable datacallback
 	set l {}
 	while {1} {
-	    $need_proc $id 1
-	    binary scan $data($id) c c
+	    my $need_proc 1
+	    binary scan $data c c
 	    set tc [expr {$c & 0xFF}]
-	    set data($id) [string range $data($id) 1 end]
+	    set data [string range $data 1 end]
 	    if {$tc < 0x80} {
 		# Positive FixNum
 		lappend l [list integer [expr {$c & 0x7F}]]
@@ -288,8 +261,8 @@ namespace eval msgpack {
 		set n [expr {$tc & 0xF}]
 		set a {}
 		for {set i 0} {$i < $n} {incr i} {
-		    lappend a {*}[unpack_coro $id 1 $coro]
-		    lappend a {*}[unpack_coro $id 1 $coro]
+		    lappend a {*}[my unpack_coro 1 $coro]
+		    lappend a {*}[my unpack_coro 1 $coro]
 		}
 		lappend l [list map $a]
 	    } elseif {$tc >= 0x90 && $tc <= 0x9F} {
@@ -297,16 +270,16 @@ namespace eval msgpack {
 		set n [expr {$tc & 0xF}]
 		set a {}
 		for {set i 0} {$i < $n} {incr i} {
-		    lappend a {*}[unpack_coro $id 1 $coro]
+		    lappend a {*}[my unpack_coro 1 $coro]
 		}
 		lappend l [list array $a]
 	    } elseif {$tc >= 0xA0 && $tc <= 0xBF} {
 		# FixRaw
 		set n [expr {$tc & 0xF}]
-		$need_proc $id $n
-		binary scan $data($id) a$n c
+		my $need_proc $n
+		binary scan $data a$n c
 		lappend l [list raw $c]
-		set data($id) [string range $data($id) $n end]
+		set data [string range $data $n end]
 	    } else {
 		if {$tc == 0xC0} {
 		    # nil
@@ -319,128 +292,128 @@ namespace eval msgpack {
 		    lappend l [list boolean 1]
 		} elseif {$tc == 0xCA} {
 		    # float
-		    $need_proc $id 4
-		    binary scan $data($id) R c
-		    set data($id) [string range $data($id) 4 end]
+		    my $need_proc 4
+		    binary scan $data R c
+		    set data [string range $data 4 end]
 		    lappend l [list double $c]
 		} elseif {$tc == 0xCB} {
 		    # double
-		    $need_proc $id 8
-		    binary scan $data($id) Q c
-		    set data($id) [string range $data($id) 8 end]
+		    my $need_proc 8
+		    binary scan $data Q c
+		    set data [string range $data 8 end]
 		    lappend l [list double $c]
 		} elseif {$tc == 0xCC} {
 		    # uint8
-		    $need_proc $id 1
-		    binary scan $data($id) c c
-		    set data($id) [string range $data($id) 1 end]
+		    my $need_proc 1
+		    binary scan $data c c
+		    set data [string range $data 1 end]
 		    lappend l [list integer [expr {$c & 0xFF}]]
 		} elseif {$tc == 0xCD} {
 		    # uint16
-		    $need_proc $id 2
-		    binary scan $data($id) S c
-		    set data($id) [string range $data($id) 2 end]
+		    my $need_proc 2
+		    binary scan $data S c
+		    set data [string range $data 2 end]
 		    lappend l [list integer [expr {$c & 0xFFFF}]]
 		} elseif {$tc == 0xCE} {
 		    # uint32
-		    $need_proc $id 4
-		    binary scan $data($id) I c
-		    set data($id) [string range $data($id) 4 end]
+		    my $need_proc 4
+		    binary scan $data I c
+		    set data [string range $data 4 end]
 		    lappend l [list integer [expr {$c & 0xFFFFFFFF}]]
 		} elseif {$tc == 0xCF} {
 		    # uint64
-		    $need_proc $id 8
-		    binary scan $data($id) W c
-		    set data($id) [string range $data($id) 8 end]
+		    my $need_proc 8
+		    binary scan $data W c
+		    set data [string range $data 8 end]
 		    lappend l [list integer [expr {$c & 0xFFFFFFFFFFFFFFFF}]]
 		} elseif {$tc == 0xD0} {
 		    # int8
-		    $need_proc $id 1
-		    binary scan $data($id) c c
-		    set data($id) [string range $data($id) 1 end]
+		    my $need_proc 1
+		    binary scan $data c c
+		    set data [string range $data 1 end]
 		    lappend l [list integer $c]
 		} elseif {$tc == 0xD1} {
 		    # int16
-		    $need_proc $id 2
-		    binary scan $data($id) S c
-		    set data($id) [string range $data($id) 2 end]
+		    my $need_proc 2
+		    binary scan $data S c
+		    set data [string range $data 2 end]
 		    lappend l [list integer $c]
 		} elseif {$tc == 0xD2} {
 		    # int32
-		    $need_proc $id 4
-		    binary scan $data($id) I c
-		    set data($id) [string range $data($id) 4 end]
+		    my $need_proc 4
+		    binary scan $data I c
+		    set data [string range $data 4 end]
 		    lappend l [list integer $c]
 		} elseif {$tc == 0xD3} {
 		    # int64
-		    $need_proc $id 8
-		    binary scan $data($id) W c
-		    set data($id) [string range $data($id) 8 end]
+		    my $need_proc 8
+		    binary scan $data W c
+		    set data [string range $data 8 end]
 		    lappend l [list integer $c]
 		} elseif {$tc == 0xDA} {
 		    # raw 16
-		    $need_proc $id 2
-		    binary scan $data($id) S n
+		    my $need_proc 2
+		    binary scan $data S n
 		    set n [expr {$n & 0xFFFF}]
-		    set data($id) [string range $data($id) 2 end]
-		    $need_proc $id $n
-		    binary scan $data($id) a$n c
+		    set data [string range $data 2 end]
+		    my $need_proc $n
+		    binary scan $data a$n c
 		    lappend l [list raw $c]
-		    set data($id) [string range $data($id) $n end]
+		    set data [string range $data $n end]
 		} elseif {$tc == 0xDB} {
 		    # raw 32
-		    $need_proc $id 4
-		    binary scan $data($id) I n
+		    my $need_proc 4
+		    binary scan $data I n
 		    set n [expr {$n & 0xFFFFFFFF}]
-		    set data($id) [string range $data($id) 4 end]
-		    $need_proc $id $n
-		    binary scan $data($id) a$n c
+		    set data [string range $data 4 end]
+		    my $need_proc $n
+		    binary scan $data a$n c
 		    lappend l [list raw $c]
-		    set data($id) [string range $data($id) $n end]
+		    set data [string range $data $n end]
 		} elseif {$tc == 0xDC} {
 		    # array 16
-		    $need_proc $id 2
-		    binary scan $data($id) S n
+		    my $need_proc 2
+		    binary scan $data S n
 		    set n [expr {$n & 0xFFFF}]
-		    set data($id) [string range $data($id) 2 end]
+		    set data [string range $data 2 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[unpack_coro $id 1 $coro]
+			lappend a {*}[my unpack_coro 1 $coro]
 		    }
 		    lappend l [list array $a]
 		} elseif {$tc == 0xDD} {
 		    # array 32
-		    $need_proc $id 4
-		    binary scan $data($id) I n
+		    my $need_proc 4
+		    binary scan $data I n
 		    set n [expr {$n & 0xFFFFFFFF}]
-		    set data($id) [string range $data($id) 4 end]
+		    set data [string range $data 4 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[unpack_coro $id 1 $coro]
+			lappend a {*}[my unpack_coro 1 $coro]
 		    }
 		    lappend l [list array $a]
 		} elseif {$tc == 0xDE} {
 		    # map 16
-		    $need_proc $id 2
-		    binary scan $data($id) S n
+		    my $need_proc 2
+		    binary scan $data S n
 		    set n [expr {$n & 0xFFFF}]
-		    set data($id) [string range $data($id) 2 end]
+		    set data [string range $data 2 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[unpack_coro $id 1 $coro]
-			lappend a {*}[unpack_coro $id 1 $coro]
+			lappend a {*}[my unpack_coro 1 $coro]
+			lappend a {*}[my unpack_coro 1 $coro]
 		    }
 		    lappend l [list map $a]
 		} elseif {$tc == 0xDF} {
 		    # map 32
-		    $need_proc $id 4
-		    binary scan $data($id) I n
+		    my $need_proc 4
+		    binary scan $data I n
 		    set n [expr {$n & 0xFFFFFFFF}]
-		    set data($id) [string range $data($id) 4 end]
+		    set data [string range $data 4 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[unpack_coro $id 1 $coro]
-			lappend a {*}[unpack_coro $id 1 $coro]
+			lappend a {*}[my unpack_coro 1 $coro]
+			lappend a {*}[my unpack_coro 1 $coro]
 		    }
 		    lappend l [list map $a]
 		}
@@ -448,19 +421,42 @@ namespace eval msgpack {
 	    if {$nested} {
 		return $l
 	    } else {
-		if {[llength $datacallback($id)]} {
+		if {[llength $callback]} {
 		    foreach i $l {
-			{*}$datacallback($id) data $i
+			{*}$callback data $i
 		    }
 		    set l {}
 		}
 		if {!$coro} {
-		    if {[string length $data($id)] == 0} {
+		    if {[string length $data] == 0} {
 			return $l
 		    }
 		}
 	    }
 	}
+    }
+}
+
+namespace eval msgpack {
+
+    proc pack {type {value 0} {value1 ""} {value2 ""}} {
+	set o [msgpack::packer new]
+	if {$type eq "tcl_array"} {
+	    upvar $value2 a
+	    $o pack $type $value $value1 a
+	} else {
+	    $o pack $type $value $value1 $value2
+	}
+	set s [$o data]
+	$o destroy
+	return $s
+    }
+
+    proc unpack {s} {
+	set o [msgpack::unpacker new]
+	set l [$o unpack_string $s]
+	$o destroy
+	return $l
     }
 
     proc map2dict {m} {
