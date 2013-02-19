@@ -7,7 +7,7 @@
 [keywords {msgpack}]
 [keywords {serialization}]
 [titledesc {msgpack Package Reference}]
-[require Tcl 8.5]
+[require Tcl 8.6]
 [require msgpack [opt 1.0.0]]
 [description]
 
@@ -20,14 +20,6 @@ serialization library. You can find the wrapper code at GitHub:
 
 Use this documentation in combination with the MessagePack documentation for
 more details.
-
-[section Building]
-
-Requirements:
-
-[list_begin options]
-[opt_def "Tcl 8.5 or 8.6"]
-[list_end]
 
 [include packer.inc]
 [include unpacker.inc]
