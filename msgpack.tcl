@@ -42,8 +42,8 @@ namespace eval $::tclmsgpacknamespace {
 
     proc unpacker {stream callback} {
 	variable packerId
-	variable data
 	variable namespacename
+	variable data
 	variable datastream
 	variable datacallback
 	set id $packerId
@@ -59,7 +59,6 @@ namespace eval $::tclmsgpacknamespace {
 	    switch -exact -- $cmd {
 		readable {
 		    if {[eof $datastream(%1$s)]} {
-			# Maybe call callback here to signal stream is close
 			{*}$datacallback(%1$s) eof $datastream(%1$s)
 			unset data(%1$s)
 			unset datastream(%1$s)
@@ -84,6 +83,23 @@ namespace eval $::tclmsgpacknamespace {
 	chan configure $stream -blocking 0 -buffering none -translation binary -encoding binary
 	chan event $stream readable [list $cmd readable]
 	return $cmd
+    }
+
+    proc unpackercoro {stream callback} {
+	variable packerId
+	variable namespacename
+	variable data
+	variable datastream
+	variable datacallback
+	set id $packerId
+	incr packerId
+	set coro ${namespacename}::msgunpackercoro$id
+	set data($id) ""
+	set datastream($id) $stream
+	set datacallback($id) $callback
+	coroutine $coro ${namespacename}::unpack_coro $id 0
+	chan configure $stream -blocking 0 -buffering none -translation binary -encoding binary
+	chan event $stream readable $coro
     }
 
     proc pack {type {value 0} {value1 ""} {value2 ""}} {
@@ -249,6 +265,215 @@ namespace eval $::tclmsgpacknamespace {
 		    return [binary format cSa* 0xDA $n $value]
 		} else {
 		    return [binary format cIa* 0xDB $n $value]
+		}
+	    }
+	}
+    }
+
+    proc need {id n} {
+	variable data
+	variable datastream
+	variable datacallback
+	while {1} {
+	    if {[eof $datastream($id)]} {
+		{*}$datacallback($id) eof $datastream($id)
+		unset data($id)
+		unset datastream($id)
+		unset datacallback($id)
+		return -code return {}
+	    }
+	    append data($id) [read $datastream($id)]
+	    if {[string length $data($id)] >= $n} break
+	    yield
+	}
+    }
+
+    proc unpack_coro {id nested} {
+	if {!$nested} {
+	    yield
+	}
+	variable data
+	variable datacallback
+	while {1} {
+	    set l {}
+	    need $id 1
+	    binary scan $data($id) c c
+	    set tc [expr {$c & 0xFF}]
+	    set data($id) [string range $data($id) 1 end]
+	    if {$tc < 0x80} {
+		# Positive FixNum
+		lappend l [list integer [expr {$c & 0x7F}]]
+	    } elseif {($tc & 0xE0) >= 0xE0} {
+		# Negative FixNum
+		binary scan [binary format c [expr {($c & 0x1F) | 0xE0}]] c c
+		lappend l [list integer $c]
+	    } elseif {$tc >= 0x80 && $tc <= 0x8F} {
+		# FixMap
+		set n [expr {$tc & 0xF}]
+		set a {}
+		for {set i 0} {$i < $n} {incr i} {
+		    lappend a {*}[unpack_coro $id 1]
+		    lappend a {*}[unpack_coro $id 1]
+		}
+		lappend l [list map $a]
+	    } elseif {$tc >= 0x90 && $tc <= 0x9F} {
+		# FixArray
+		set n [expr {$tc & 0xF}]
+		set a {}
+		for {set i 0} {$i < $n} {incr i} {
+		    lappend a {*}[unpack_coro $id 1]
+		}
+		lappend l [list array $a]
+	    } elseif {$tc >= 0xA0 && $tc <= 0xBF} {
+		# FixRaw
+		set n [expr {$tc & 0xF}]
+		need $id $n
+		binary scan $data($id) a$n c
+		lappend l [list raw $c]
+		set data($id) [string range $data($id) $n end]
+	    } else {
+		if {$tc == 0xC0} {
+		    # nil
+		    lappend l nil
+		} elseif {$tc == 0xC2} {
+		    # false
+		    lappend l [list boolean 0]
+		} elseif {$tc == 0xC3} {
+		    # true
+		    lappend l [list boolean 1]
+		} elseif {$tc == 0xCA} {
+		    # float
+		    need $id 4
+		    binary scan $data($id) R c
+		    set data($id) [string range $data($id) 4 end]
+		    lappend l [list double $c]
+		} elseif {$tc == 0xCB} {
+		    # double
+		    need $id 8
+		    binary scan $data($id) Q c
+		    set data($id) [string range $data($id) 8 end]
+		    lappend l [list double $c]
+		} elseif {$tc == 0xCC} {
+		    # uint8
+		    need $id 1
+		    binary scan $data($id) c c
+		    set data($id) [string range $data($id) 1 end]
+		    lappend l [list integer [expr {$c & 0xFF}]]
+		} elseif {$tc == 0xCD} {
+		    # uint16
+		    need $id 2
+		    binary scan $data($id) S c
+		    set data($id) [string range $data($id) 2 end]
+		    lappend l [list integer [expr {$c & 0xFFFF}]]
+		} elseif {$tc == 0xCE} {
+		    # uint32
+		    need $id 4
+		    binary scan $data($id) I c
+		    set data($id) [string range $data($id) 4 end]
+		    lappend l [list integer [expr {$c & 0xFFFFFFFF}]]
+		} elseif {$tc == 0xCF} {
+		    # uint64
+		    need $id 8
+		    binary scan $data($id) W c
+		    set data($id) [string range $data($id) 8 end]
+		    lappend l [list integer [expr {$c & 0xFFFFFFFFFFFFFFFF}]]
+		} elseif {$tc == 0xD0} {
+		    # int8
+		    need $id 1
+		    binary scan $data($id) c c
+		    set data($id) [string range $data($id) 1 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xD1} {
+		    # int16
+		    need $id 2
+		    binary scan $data($id) S c
+		    set data($id) [string range $data($id) 2 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xD2} {
+		    # int32
+		    need $id 4
+		    binary scan $data($id) I c
+		    set data($id) [string range $data($id) 4 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xD3} {
+		    # int64
+		    need $id 8
+		    binary scan $data($id) W c
+		    set data($id) [string range $data($id) 8 end]
+		    lappend l [list integer $c]
+		} elseif {$tc == 0xDA} {
+		    # raw 16
+		    need $id 2
+		    binary scan $data($id) S n
+		    set n [expr {$n & 0xFFFF}]
+		    set data($id) [string range $data($id) 2 end]
+		    need $id $n
+		    binary scan $data($id) a$n c
+		    lappend l [list raw $c]
+		    set data($id) [string range $data($id) $n end]
+		} elseif {$tc == 0xDB} {
+		    # raw 32
+		    need $id 4
+		    binary scan $data($id) I n
+		    set n [expr {$n & 0xFFFFFFFF}]
+		    set data($id) [string range $data($id) 4 end]
+		    need $id $n
+		    binary scan $data($id) a$n c
+		    lappend l [list raw $c]
+		    set data($id) [string range $data($id) $n end]
+		} elseif {$tc == 0xDC} {
+		    # array 16
+		    need $id 2
+		    binary scan $data($id) S n
+		    set n [expr {$n & 0xFFFF}]
+		    set data($id) [string range $data($id) 2 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lappend a {*}[unpack_coro $id 1]
+		    }
+		    lappend l [list array $a]
+		} elseif {$tc == 0xDD} {
+		    # array 32
+		    need $id 4
+		    binary scan $data($id) I n
+		    set n [expr {$n & 0xFFFFFFFF}]
+		    set data($id) [string range $data($id) 4 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lappend a {*}[unpack_coro $id 1]
+		    }
+		    lappend l [list array $a]
+		} elseif {$tc == 0xDE} {
+		    # map 16
+		    need $id 2
+		    binary scan $data($id) S n
+		    set n [expr {$n & 0xFFFF}]
+		    set data($id) [string range $data($id) 2 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lappend a {*}[unpack_coro $id 1]
+			lappend a {*}[unpack_coro $id 1]
+		    }
+		    lappend l [list map $a]
+		} elseif {$tc == 0xDF} {
+		    # map 32
+		    need $id 4
+		    binary scan $data($id) I n
+		    set n [expr {$n & 0xFFFFFFFF}]
+		    set data($id) [string range $data($id) 4 end]
+		    set a {}
+		    for {set i 0} {$i < $n} {incr i} {
+			lappend a {*}[unpack_coro $id 1]
+			lappend a {*}[unpack_coro $id 1]
+		    }
+		    lappend l [list map $a]
+		}
+	    }
+	    if {$nested} {
+		return $l
+	    } else {
+		foreach i $l {
+		    {*}$datacallback($id) data $i
 		}
 	    }
 	}
