@@ -7,7 +7,7 @@ oo::class create msgpack::packer {
 
     variable data
 
-    constructor {args} {
+    constructor {} {
 	set data ""
     }
 
@@ -191,7 +191,7 @@ oo::class create msgpack::unpacker {
 
     variable data stream callback
 
-    constructor {args} {
+    constructor {} {
     }
 
     destructor {}
@@ -201,7 +201,7 @@ oo::class create msgpack::unpacker {
 	set data ""
 	set stream $istream
 	set callback $icallback
-	coroutine $coro [self] unpack_coro 0 1
+	coroutine $coro [self] UnpackCoro 0 1
 	chan configure $stream -blocking 0 -buffering none -translation binary -encoding binary
 	chan event $stream readable $coro
     }
@@ -209,13 +209,13 @@ oo::class create msgpack::unpacker {
     method unpack_string {idata {icallback {}}} {
 	set data $idata
 	set callback $icallback
-	set l [my unpack_coro 0 0]
+	set l [my UnpackCoro 0 0]
 	if {[llength $callback] == 0} {
 	    return $l
 	}
-    }
+    } 
 
-    method need_coro {n} {
+    method NeedCoro {n} {
 	while {1} {
 	    if {[eof $stream]} {
 		{*}$callback eof $stream
@@ -227,21 +227,21 @@ oo::class create msgpack::unpacker {
 	}
     }
 
-    method need_string {n} {
+    method NeedString {n} {
 	if {[string length $data] < $n} {
 	    error "input string not long enough, need $n byte(s), only [string length $data] left"
 	}
     }
 
-    method unpack_coro {nested coro} {
+    method UnpackCoro {nested coro} {
 	if {$coro} {
 	    if {!$nested} {
 		# Yield creation
 		yield
 	    }
-	    set need_proc need_coro
+	    set need_proc NeedCoro
 	} else {
-	    set need_proc need_string
+	    set need_proc NeedString
 	}
 	set l {}
 	while {1} {
@@ -261,8 +261,8 @@ oo::class create msgpack::unpacker {
 		set n [expr {$tc & 0xF}]
 		set a {}
 		for {set i 0} {$i < $n} {incr i} {
-		    lappend a {*}[my unpack_coro 1 $coro]
-		    lappend a {*}[my unpack_coro 1 $coro]
+		    lappend a {*}[my UnpackCoro 1 $coro]
+		    lappend a {*}[my UnpackCoro 1 $coro]
 		}
 		lappend l [list map $a]
 	    } elseif {$tc >= 0x90 && $tc <= 0x9F} {
@@ -270,7 +270,7 @@ oo::class create msgpack::unpacker {
 		set n [expr {$tc & 0xF}]
 		set a {}
 		for {set i 0} {$i < $n} {incr i} {
-		    lappend a {*}[my unpack_coro 1 $coro]
+		    lappend a {*}[my UnpackCoro 1 $coro]
 		}
 		lappend l [list array $a]
 	    } elseif {$tc >= 0xA0 && $tc <= 0xBF} {
@@ -378,7 +378,7 @@ oo::class create msgpack::unpacker {
 		    set data [string range $data 2 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[my unpack_coro 1 $coro]
+			lappend a {*}[my UnpackCoro 1 $coro]
 		    }
 		    lappend l [list array $a]
 		} elseif {$tc == 0xDD} {
@@ -389,7 +389,7 @@ oo::class create msgpack::unpacker {
 		    set data [string range $data 4 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[my unpack_coro 1 $coro]
+			lappend a {*}[my UnpackCoro 1 $coro]
 		    }
 		    lappend l [list array $a]
 		} elseif {$tc == 0xDE} {
@@ -400,8 +400,8 @@ oo::class create msgpack::unpacker {
 		    set data [string range $data 2 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[my unpack_coro 1 $coro]
-			lappend a {*}[my unpack_coro 1 $coro]
+			lappend a {*}[my UnpackCoro 1 $coro]
+			lappend a {*}[my UnpackCoro 1 $coro]
 		    }
 		    lappend l [list map $a]
 		} elseif {$tc == 0xDF} {
@@ -412,8 +412,8 @@ oo::class create msgpack::unpacker {
 		    set data [string range $data 4 end]
 		    set a {}
 		    for {set i 0} {$i < $n} {incr i} {
-			lappend a {*}[my unpack_coro 1 $coro]
-			lappend a {*}[my unpack_coro 1 $coro]
+			lappend a {*}[my UnpackCoro 1 $coro]
+			lappend a {*}[my UnpackCoro 1 $coro]
 		    }
 		    lappend l [list map $a]
 		}
