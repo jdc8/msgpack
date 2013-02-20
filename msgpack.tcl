@@ -189,12 +189,16 @@ oo::class create msgpack::packer {
 
 oo::class create msgpack::unpacker {
 
-    variable data stream callback
+    variable data stream callback coro
 
     constructor {} {
     }
 
-    destructor {}
+    destructor {
+	if {[info exists coro]} {
+	    rename $coro {}
+	}
+    }
 
     method unpack_stream {istream icallback} {
 	set coro ::msgpack::ups[clock milliseconds]
@@ -217,11 +221,14 @@ oo::class create msgpack::unpacker {
 
     method NeedCoro {n} {
 	while {1} {
-	    if {[eof $stream]} {
-		{*}$callback eof $stream
-		return -code return {}
+	    # Catch the [eof] and [read], socket may be close already.
+	    catch {
+		if {[eof $stream]} {
+		    {*}$callback eof $stream
+		    return -code return {}
+		}
+		append data [read $stream]
 	    }
-	    append data [read $stream]
 	    if {[string length $data] >= $n} break
 	    yield
 	}
