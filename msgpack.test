@@ -316,7 +316,7 @@ tcltest::test raw raw -setup {
     set p [cmsgpack packer]
 } -body {
     set tt ""
-    foreach v [list "" a bb ccc dddd [string repeat e 32] [string repeat f 33] [string repeat g 65535] [string repeat h 65536] [string repeat i 100000]] {
+    foreach v [list "" a bb ccc dddd [string repeat e 31] [string repeat e 32] [string repeat f 33] [string repeat g 65535] [string repeat h 65536] [string repeat i 100000]] {
 	append tt [msgpack pack raw [string length $v]]
 	append tt [msgpack pack raw_body $v]
 	append tt [msgpack pack string $v]

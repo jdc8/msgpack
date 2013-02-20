@@ -275,7 +275,7 @@ oo::class create msgpack::unpacker {
 		lappend l [list array $a]
 	    } elseif {$tc >= 0xA0 && $tc <= 0xBF} {
 		# FixRaw
-		set n [expr {$tc & 0xF}]
+		set n [expr {$tc & 0x1F}]
 		my $need_proc $n
 		binary scan $data a$n c
 		lappend l [list raw $c]
