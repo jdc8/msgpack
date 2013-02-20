@@ -24,6 +24,8 @@ more details.
 [include packer.inc]
 [include unpacker.inc]
 [include utils.inc]
+[include packopts.inc]
+[include examples.inc]
 
 [section "Bugs, ideas, feedback"]
 
