@@ -339,6 +339,48 @@ specifiers and if needed a value. The list below shows the supported types:
 Examples
 ========
 
+Creating a *msgpack::packer* object and packing some data:
+
+| package require msgpack
+
+| set p [msgpack::packer new]
+
+| $p pack int 123456789
+| $p pack string "A MessagePack example"
+| $p pack dict int string {1 one 2 two}
+| set packed_data [$p data]
+| $p destroy
+
+Now unpack the packed data using a *msgpack::packer* object:
+
+| package require msgpack
+
+| set u [msgpack::unpacker new]
+| $u unpack_string $packed_data
+
+| $u destroy
+
+After unpacking, the following list of type/value pairs is returned by the
+unpack_string method:
+
+| {integer 123456789} {raw {A MessagePack example}} {map {{integer 1} {raw one} {integer 2} {raw two}}}
+
+The same example using the pack utility function for packing the data:
+
+| set packed_data ""
+| append packed_data [msgpack pack int 0xFFFFFFFF]
+| append packed_data [msgpack pack string "A Utility example"]
+| append packed_data [msgpack pack dict int string {3 three 4 four}]
+
+An using the unpack utility function to unpack the data:
+
+| puts [msgpack unpack $packed_data]
+
+After unpacking, the following list of type/value pairs is returned by the
+unpack utility function:
+
+| {integer 4294967295} {raw {A Utility example}} {map {{integer 3} {raw three} {integer 4} {raw four}}}
+
 Bugs, ideas, feedback
 =====================
 
