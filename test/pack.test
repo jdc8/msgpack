@@ -1,0 +1,41 @@
+package require tcltest
+set auto_path [list .. {*}$auto_path]
+package require -exact msgpack 2.1.0
+
+
+# Pack nil
+
+tcltest::test pack-nil {pack nil} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack nil
+    $p as_readable_bytes
+} -cleanup {
+  $p destroy
+} -returnCodes {ok} -result {C0}
+
+# Pack false
+
+tcltest::test pack-false {pack false} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack false
+    $p as_readable_bytes
+} -cleanup {
+  $p destroy
+} -returnCodes {ok} -result {C2}
+
+# Pack true
+
+tcltest::test pack-true {pack true} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack true
+    $p as_readable_bytes
+} -cleanup {
+  $p destroy
+} -returnCodes {ok} -result {C3}
+
+# cleanup
+::tcltest::cleanupTests
+return

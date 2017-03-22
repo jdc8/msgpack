@@ -1,5 +1,5 @@
 package require Tcl 8.6
-package provide msgpack 1.0.0
+package provide msgpack 2.1.0
 
 namespace eval msgpack {}
 
@@ -14,6 +14,17 @@ oo::class create msgpack::packer {
     destructor {}
 
     method data {} { return $data }
+
+    method as_readable_bytes {} {
+	set result {}
+	set tdata $data
+	while {[string length $tdata] > 0} {
+	    binary scan $tdata c c
+	    set tdata [string range $tdata 1 end]
+	    lappend result [format {%02X} [expr {$c & 0xFF}]]
+	}
+	return $result
+    }
 
     method reset {} { set data "" }
 
