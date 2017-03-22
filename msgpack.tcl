@@ -19,6 +19,79 @@ oo::class create msgpack::packer {
 
     method pack {type {value 0} {value1 ""} {value2 ""}} {
 	switch -exact -- $type {
+	    nil { append data [binary format c 0xC0] }
+	    true { append data [binary format c 0xC3] }
+	    false { append data [binary format c 0xC2] }
+
+	    fixnumpos { append data [binary format c [expr {$value & 0x7F}]] }
+	    fixnumneg { append data [binary format c [expr {($value & 0x1F) | 0xE0}]] }
+
+	    fix_uint8 { append data [binary format cc 0xCC [expr {$value & 0xFF}]] }
+	    fix_uint16 { append data [binary format cS 0xCD [expr {$value & 0xFFFF}]] }
+	    fix_uint32 { append data [binary format cI 0xCE [expr {$value & 0xFFFFFFFF}]] }
+	    fix_uint64 { append data [binary format cW 0xCF [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
+
+	    fix_int8 { append data [binary format cc 0xD0 [expr {$value & 0xFF}]] }
+	    fix_int16 { append data [binary format cS 0xD1 [expr {$value & 0xFFFF}]] }
+	    fix_int32 { append data [binary format cI 0xD2 [expr {$value & 0xFFFFFFFF}]] }
+	    fix_int64 { append data [binary format cW 0xD3 [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
+
+	    float32 - float { append data [binary format cR 0xCA $value] }
+	    float64 - double { append data [binary format cQ 0xCB $value] }
+
+	    string {
+		set n [string length $value]
+		if {$n < 32} {
+		    append data [binary format ca* [expr {0xA0 | $n}] $value]
+		} elseif {$n < 256} {
+		    append data [binary format cca* 0xD9 $n $value]
+		} elseif {$n < 65536} {
+		    append data [binary format cSa* 0xDA $n $value]
+		} else {
+		    append data [binary format cIa* 0xDB $n $value]
+		}
+	    }
+
+	    bin - raw {
+		if {$value < 256} {
+		    append data [binary format cc 0xC4 $value]
+		} elseif {$value < 65536} {
+		    append data [binary format cS 0xC5 $value]
+		} else {
+		    append data [binary format cI 0xC6 $value]
+		}
+	    }
+	    bin_body - raw_body {
+		append data [binary format a* $value]
+	    }
+
+	    array {
+		if {$value < 16} {
+		    append data [binary format c [expr {0x90 | $value}]]
+		} elseif {$value < 65536} {
+		    append data [binary format cS 0xDC $value]
+		} else {
+		    append data [binary format cI 0xDD $value]
+		}
+	    }
+
+	    map {
+		if {$value < 16} {
+		    append data [binary format c [expr {0x80 | $value}]]
+		} elseif {$value < 65536} {
+		    append data [binary format cS 0xDE $value]
+		} else {
+		    append data [binary format cI 0xDF $value]
+		}
+	    }
+
+	    boolean {
+		if {$value} {
+		    append data [my pack true]
+		} else {
+		    append data [my pack false]
+		}
+	    }
 	    short { append data [my pack int16 $value] }
 	    int { append data [my pack int32 $value] }
 	    long { append data [my pack int32 $value] }
@@ -27,8 +100,7 @@ oo::class create msgpack::packer {
 	    unsigned_int { append data [my pack uint32 $value] }
 	    unsigned_long { append data [my pack uint32 $value] }
 	    unsigned_long_long { append data [my pack uint64 $value] }
-	    fixnumpos { append data [binary format c [expr {$value & 0x7F}]] }
-	    fixnumneg { append data [binary format c [expr {($value & 0x1F) | 0xE0}]] }
+
 	    int8 {
 		if {$value < -32} {
 		    append data [my pack fix_int8 $value]
@@ -105,43 +177,13 @@ oo::class create msgpack::packer {
 		    append data [my pack fix_uint64 $value]
 		}
 	    }
-	    fix_int8 { append data [binary format cc 0xD0 [expr {$value & 0xFF}]] }
-	    fix_int16 { append data [binary format cS 0xD1 [expr {$value & 0xFFFF}]] }
-	    fix_int32 { append data [binary format cI 0xD2 [expr {$value & 0xFFFFFFFF}]] }
-	    fix_int64 { append data [binary format cW 0xD3 [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
-	    fix_uint8 { append data [binary format cc 0xCC [expr {$value & 0xFF}]] }
-	    fix_uint16 { append data [binary format cS 0xCD [expr {$value & 0xFFFF}]] }
-	    fix_uint32 { append data [binary format cI 0xCE [expr {$value & 0xFFFFFFFF}]] }
-	    fix_uint64 { append data [binary format cW 0xCF [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
-	    float { append data [binary format cR 0xCA $value] }
-	    double { append data [binary format cQ 0xCB $value] }
-	    nil { append data [binary format c 0xC0] }
-	    true { append data [binary format c 0xC3] }
-	    false { append data [binary format c 0xC2] }
-	    array {
-		if {$value < 16} {
-		    append data [binary format c [expr {0x90 | $value}]]
-		} elseif {$value < 65536} {
-		    append data [binary format cS 0xDC $value]
-		} else {
-		    append data [binary format cI 0xDD $value]
-		}
-	    }
+
 	    list {
 		set r [my pack array [llength $value1]]
 		foreach e $value1 {
 		    append r [my pack $value $e]
 		}
 		append data $r
-	    }
-	    map {
-		if {$value < 16} {
-		    append data [binary format c [expr {0x80 | $value}]]
-		} elseif {$value < 65536} {
-		    append data [binary format cS 0xDE $value]
-		} else {
-		    append data [binary format cI 0xDF $value]
-		}
 	    }
 	    tcl_array {
 		upvar $value2 a
@@ -159,28 +201,6 @@ oo::class create msgpack::packer {
 		    append r [my pack $value1 $v]
 		}
 		append data $r
-	    }
-	    raw {
-		if {$value < 32} {
-		    append data [binary format c [expr {0xA0 | $value}]]
-		} elseif {$value < 65536} {
-		    append data [binary format cS 0xDA $value]
-		} else {
-		    append data [binary format cI 0xDB $value]
-		}
-	    }
-	    raw_body {
-		append data [binary format a* $value]
-	    }
-	    string {
-		set n [string length $value]
-		if {$n < 32} {
-		    append data [binary format ca* [expr {0xA0 | $n}] $value]
-		} elseif {$n < 65536} {
-		    append data [binary format cSa* 0xDA $n $value]
-		} else {
-		    append data [binary format cIa* 0xDB $n $value]
-		}
 	    }
 	}
 	return
@@ -217,7 +237,7 @@ oo::class create msgpack::unpacker {
 	if {[llength $callback] == 0} {
 	    return $l
 	}
-    } 
+    }
 
     method NeedCoro {n} {
 	while {1} {
@@ -281,11 +301,11 @@ oo::class create msgpack::unpacker {
 		}
 		lappend l [list array $a]
 	    } elseif {$tc >= 0xA0 && $tc <= 0xBF} {
-		# FixRaw
+		# FixString
 		set n [expr {$tc & 0x1F}]
 		my $need_proc $n
 		binary scan $data a$n c
-		lappend l [list raw $c]
+		lappend l [list string $c]
 		set data [string range $data $n end]
 	    } else {
 		if {$tc == 0xC0} {
@@ -357,7 +377,47 @@ oo::class create msgpack::unpacker {
 		    binary scan $data W c
 		    set data [string range $data 8 end]
 		    lappend l [list integer $c]
+		} elseif {$tc == 0xD9} {
+		    # string 8
+		    my $need_proc 2
+		    binary scan $data S n
+		    set n [expr {$n & 0xFFFF}]
+		    set data [string range $data 2 end]
+		    my $need_proc $n
+		    binary scan $data a$n c
+		    lappend l [list string $c]
+		    set data [string range $data $n end]
 		} elseif {$tc == 0xDA} {
+		    # string 16
+		    my $need_proc 2
+		    binary scan $data S n
+		    set n [expr {$n & 0xFFFF}]
+		    set data [string range $data 2 end]
+		    my $need_proc $n
+		    binary scan $data a$n c
+		    lappend l [list string $c]
+		    set data [string range $data $n end]
+		} elseif {$tc == 0xDB} {
+		    # string 32
+		    my $need_proc 4
+		    binary scan $data I n
+		    set n [expr {$n & 0xFFFFFFFF}]
+		    set data [string range $data 4 end]
+		    my $need_proc $n
+		    binary scan $data a$n c
+		    lappend l [list string $c]
+		    set data [string range $data $n end]
+		} elseif {$tc == 0xC4} {
+		    # raw 8
+		    my $need_proc 2
+		    binary scan $data S n
+		    set n [expr {$n & 0xFFFF}]
+		    set data [string range $data 2 end]
+		    my $need_proc $n
+		    binary scan $data a$n c
+		    lappend l [list raw $c]
+		    set data [string range $data $n end]
+		} elseif {$tc == 0xC5} {
 		    # raw 16
 		    my $need_proc 2
 		    binary scan $data S n
@@ -367,7 +427,7 @@ oo::class create msgpack::unpacker {
 		    binary scan $data a$n c
 		    lappend l [list raw $c]
 		    set data [string range $data $n end]
-		} elseif {$tc == 0xDB} {
+		} elseif {$tc == 0xC6} {
 		    # raw 32
 		    my $need_proc 4
 		    binary scan $data I n
