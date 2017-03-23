@@ -34,8 +34,8 @@ oo::class create msgpack::packer {
 	    true { append data [binary format c 0xC3] }
 	    false { append data [binary format c 0xC2] }
 
-	    fixnumpos { append data [binary format c [expr {$value & 0x7F}]] }
-	    fixnumneg { append data [binary format c [expr {($value & 0x1F) | 0xE0}]] }
+	    fix_numpos { append data [binary format c [expr {$value & 0x7F}]] }
+	    fix_numneg { append data [binary format c [expr {($value & 0x1F) | 0xE0}]] }
 
 	    fix_uint8 { append data [binary format cc 0xCC [expr {$value & 0xFF}]] }
 	    fix_uint16 { append data [binary format cS 0xCD [expr {$value & 0xFFFF}]] }
