@@ -15,17 +15,6 @@ oo::class create msgpack::packer {
 
     method data {} { return $data }
 
-    method as_readable_bytes {} {
-	set result {}
-	set tdata $data
-	while {[string length $tdata] > 0} {
-	    binary scan $tdata c c
-	    set tdata [string range $tdata 1 end]
-	    lappend result [format {%02X} [expr {$c & 0xFF}]]
-	}
-	return $result
-    }
-
     method reset {} { set data "" }
 
     method pack {type {value 0} {value1 ""} {value2 ""}} {

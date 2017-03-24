@@ -2,17 +2,16 @@ package require tcltest
 set auto_path [list .. {*}$auto_path]
 package require -exact msgpack 2.1.0
 
-
 # Pack nil
 
 tcltest::test pack-nil {pack nil} -setup {
     set p [msgpack::packer new]
 } -body {
     $p pack nil
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {C0}
+} -returnCodes {ok} -result \uC0
 
 # Pack false
 
@@ -20,10 +19,10 @@ tcltest::test pack-false {pack false} -setup {
     set p [msgpack::packer new]
 } -body {
     $p pack false
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {C2}
+} -returnCodes {ok} -result \uC2
 
 # Pack true
 
@@ -31,10 +30,10 @@ tcltest::test pack-true {pack true} -setup {
     set p [msgpack::packer new]
 } -body {
     $p pack true
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {C3}
+} -returnCodes {ok} -result \uC3
 
 # Pack fix_numpos
 
@@ -45,10 +44,10 @@ tcltest::test pack-fix_numpos {pack fix_numpos} -setup {
     $p pack fix_numpos 10
     $p pack fix_numpos 0x7f
     $p pack fix_numpos 0xFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {00 0A 7F 7F}
+} -returnCodes {ok} -result \u00\u0A\u7F\u7F
 
 # Pack fix_numneg
 
@@ -59,10 +58,10 @@ tcltest::test pack-fix_numneg {pack fix_numneg} -setup {
     $p pack fix_numneg -10
     $p pack fix_numneg -32
     $p pack fix_numneg 0xFFFFFFFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {FF F6 E0 FF}
+} -returnCodes {ok} -result \uFF\uF6\uE0\uFF
 
 # Pack fix_uint8
 
@@ -72,10 +71,10 @@ tcltest::test pack-fix_uint8 {pack fix_uint8} -setup {
     $p pack fix_uint8 0
     $p pack fix_uint8 10
     $p pack fix_uint8 0xFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {CC 00 CC 0A CC FF}
+} -returnCodes {ok} -result \uCC\u00\uCC\u0A\uCC\uFF
 
 # Pack fix_uint16
 
@@ -85,10 +84,10 @@ tcltest::test pack-fix_uint16 {pack fix_uint16} -setup {
     $p pack fix_uint16 0
     $p pack fix_uint16 10
     $p pack fix_uint16 0xFFFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {CD 00 00 CD 00 0A CD FF FF}
+} -returnCodes {ok} -result \uCD\u00\u00\uCD\u00\u0A\uCD\uFF\uFF
 
 # Pack fix_uint32
 
@@ -98,10 +97,10 @@ tcltest::test pack-fix_uint32 {pack fix_uint32} -setup {
     $p pack fix_uint32 0
     $p pack fix_uint32 10
     $p pack fix_uint32 0xFFFFFFFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {CE 00 00 00 00 CE 00 00 00 0A CE FF FF FF FF}
+} -returnCodes {ok} -result \uCE\u00\u00\u00\u00\uCE\u00\u00\u00\u0A\uCE\uFF\uFF\uFF\uFF
 
 # Pack fix_uint64
 
@@ -111,10 +110,10 @@ tcltest::test pack-fix_uint64 {pack fix_uint64} -setup {
     $p pack fix_uint64 0
     $p pack fix_uint64 10
     $p pack fix_uint64 0xFFFFFFFFFFFFFFFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {CF 00 00 00 00 00 00 00 00 CF 00 00 00 00 00 00 00 0A CF FF FF FF FF FF FF FF FF}
+} -returnCodes {ok} -result \uCF\u00\u00\u00\u00\u00\u00\u00\u00\uCF\u00\u00\u00\u00\u00\u00\u00\u0A\uCF\uFF\uFF\uFF\uFF\uFF\uFF\uFF\uFF
 
 # Pack fix_int8
 
@@ -126,10 +125,10 @@ tcltest::test pack-fix_int8 {pack fix_int8} -setup {
     $p pack fix_int8 -10
     $p pack fix_int8 -0x80
     $p pack fix_int8 0x7F
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {D0 00 D0 0A D0 F6 D0 80 D0 7F}
+} -returnCodes {ok} -result \uD0\u00\uD0\u0A\uD0\uF6\uD0\u80\uD0\u7F
 
 # Pack fix_int16
 
@@ -141,10 +140,10 @@ tcltest::test pack-fix_int16 {pack fix_int16} -setup {
     $p pack fix_int16 -10
     $p pack fix_int16 -0x8000
     $p pack fix_int16 0x7FFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {D1 00 00 D1 00 0A D1 FF F6 D1 80 00 D1 7F FF}
+} -returnCodes {ok} -result \uD1\u00\u00\uD1\u00\u0A\uD1\uFF\uF6\uD1\u80\u00\uD1\u7F\uFF
 
 # Pack fix_int32
 
@@ -156,10 +155,10 @@ tcltest::test pack-fix_int32 {pack fix_int32} -setup {
     $p pack fix_int32 -10
     $p pack fix_int32 -0x80000000
     $p pack fix_int32 0x7FFFFFFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {D2 00 00 00 00 D2 00 00 00 0A D2 FF FF FF F6 D2 80 00 00 00 D2 7F FF FF FF}
+} -returnCodes {ok} -result \uD2\u00\u00\u00\u00\uD2\u00\u00\u00\u0A\uD2\uFF\uFF\uFF\uF6\uD2\u80\u00\u00\u00\uD2\u7F\uFF\uFF\uFF
 
 # Pack fix_int64
 
@@ -171,10 +170,10 @@ tcltest::test pack-fix_int64 {pack fix_int64} -setup {
     $p pack fix_int64 -10
     $p pack fix_int64 -0x8000000000000000
     $p pack fix_int64 0x7FFFFFFFFFFFFFFF
-    $p as_readable_bytes
+    $p data
 } -cleanup {
     $p destroy
-} -returnCodes {ok} -result {D3 00 00 00 00 00 00 00 00 D3 00 00 00 00 00 00 00 0A D3 FF FF FF FF FF FF FF F6 D3 80 00 00 00 00 00 00 00 D3 7F FF FF FF FF FF FF FF}
+} -returnCodes {ok} -result \uD3\u00\u00\u00\u00\u00\u00\u00\u00\uD3\u00\u00\u00\u00\u00\u00\u00\u0A\uD3\uFF\uFF\uFF\uFF\uFF\uFF\uFF\uF6\uD3\u80\u00\u00\u00\u00\u00\u00\u00\uD3\u7F\uFF\uFF\uFF\uFF\uFF\uFF\uFF
 
 # cleanup
 ::tcltest::cleanupTests
