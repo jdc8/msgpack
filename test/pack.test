@@ -175,6 +175,28 @@ tcltest::test pack-fix_int64 {pack fix_int64} -setup {
     $p destroy
 } -returnCodes {ok} -result \uD3\u00\u00\u00\u00\u00\u00\u00\u00\uD3\u00\u00\u00\u00\u00\u00\u00\u0A\uD3\uFF\uFF\uFF\uFF\uFF\uFF\uFF\uF6\uD3\u80\u00\u00\u00\u00\u00\u00\u00\uD3\u7F\uFF\uFF\uFF\uFF\uFF\uFF\uFF
 
+# Pack fix_int32
+
+tcltest::test pack-fix_float32 {pack fix_float32} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack float32 -1.414E-3
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \uCA\uBA\uB9\u55\uF8
+
+# Pack fix_float64
+
+tcltest::test pack-fix_float64 {pack fix_float64} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack float64 -3.1415E-25
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \uCB\uBA\uD8\u4E\u61\uBE\u86\uF5\u34
+
 # cleanup
 ::tcltest::cleanupTests
 return

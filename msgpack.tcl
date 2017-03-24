@@ -202,6 +202,9 @@ oo::class create msgpack::packer {
 		}
 		append data $r
 	    }
+	    default {
+		error "Unknown msgpack type: $type"
+	    }
 	}
 	return
     }
