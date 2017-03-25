@@ -197,6 +197,58 @@ tcltest::test pack-fix_float64 {pack fix_float64} -setup {
     $p destroy
 } -returnCodes {ok} -result \uCB\uBA\uD8\u4E\u61\uBE\u86\uF5\u34
 
+# Pack string
+
+tcltest::test pack-string-1 {pack string} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack string ""
+    $p pack string " "
+    $p pack string [string repeat " " 31]
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \uA0\uA1\u20\uBF\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20
+
+tcltest::test pack-string-2 {pack string} -setup {
+    set p [msgpack::packer new]
+} -body {
+    set result {}
+    $p pack string [string repeat " " 32]
+    lappend result [string range [$p data] 0 2] [string length [$p data]]
+    $p reset
+    $p pack string [string repeat " " 255]
+    lappend result [string range [$p data] 0 2] [string length [$p data]]
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result [list \uD9\u20\u20 34 \uD9\uFF\u20 257]
+
+tcltest::test pack-string-3 {pack string} -setup {
+    set p [msgpack::packer new]
+} -body {
+    set result {}
+    $p pack string [string repeat " " 256]
+    lappend result [string range [$p data] 0 3] [string length [$p data]]
+    $p reset
+    $p pack string [string repeat " " 65535]
+    lappend result [string range [$p data] 0 3] [string length [$p data]]
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result [list \uDA\u01\u00\u20 259 \uDA\uFF\uFF\u20 65538]
+
+tcltest::test pack-string-4 {pack string} -setup {
+    set p [msgpack::packer new]
+} -body {
+    set result {}
+    $p pack string [string repeat " " 65536]
+    lappend result [string range [$p data] 0 5] [string length [$p data]]
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result [list \uDB\u00\u01\u00\u00\u20 65541]
+
 # cleanup
 ::tcltest::cleanupTests
 return
