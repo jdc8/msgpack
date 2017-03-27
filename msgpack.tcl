@@ -17,6 +17,17 @@ oo::class create msgpack::packer {
 
     method reset {} { set data "" }
 
+    method readable {} {
+       set result {}
+       set tdata $data
+       while {[string length $tdata] > 0} {
+           binary scan $tdata c c
+           set tdata [string range $tdata 1 end]
+           lappend result [format {%02X} [expr {$c & 0xFF}]]
+       }
+       return $result
+    }
+
     method pack {type {value 0} {value1 ""} {value2 ""}} {
 	switch -exact -- $type {
 	    nil { append data [binary format c 0xC0] }
@@ -92,87 +103,41 @@ oo::class create msgpack::packer {
 		    append data [my pack false]
 		}
 	    }
-	    short { append data [my pack int16 $value] }
-	    int { append data [my pack int32 $value] }
-	    long { append data [my pack int32 $value] }
-	    long_long { append data [my pack int64 $value] }
-	    unsigned_short { append data [my pack uint16 $value] }
-	    unsigned_int { append data [my pack uint32 $value] }
-	    unsigned_long { append data [my pack uint32 $value] }
-	    unsigned_long_long { append data [my pack uint64 $value] }
 
-	    int8 {
-		if {$value < -32} {
+	    int {
+		if {$value < -0x80000000} {
+		    append data [my pack fix_int64 $value]
+		} elseif {$value < -0x8000} {
+		    append data [my pack fix_int32 $value]
+		} elseif {$value < -0x80} {
+		    append data [my pack fix_int16 $value]
+		} elseif {$value < -0x20} {
 		    append data [my pack fix_int8 $value]
+		} elseif {$value < 0} {
+		    append data [my pack fix_numneg $value]
+		} elseif {$value < 128} {
+		    append data [my pack fix_numpos $value]
+		} elseif {$value < 0x80} {
+		    # ever use, fully covered by fix_numpos
+		    append data [my pack fix_int8 $value]
+		} elseif {$value < 0x8000} {
+		    append data [my pack fix_int16 $value]
+		} elseif {$value < 0x80000000} {
+		    append data [my pack fix_int32 $value]
 		} else {
-		    if {$value < 0} {
-			append data [my pack fixnumneg $value]
-		    } else {
-			if {$value < 128} {
-			    append data [my pack fixnumpos $value]
-			} else {
-			    append data [my pack fix_int8 $value]
-			}
-		    }
+		    append data [my pack fix_int64 $value]
 		}
 	    }
-	    int16 {
-		if {$value < -128} {
-		    append data [my pack fix_int16 $value]
-		} elseif {$value < 128} {
-		    append data [my pack int8 $value]
+
+	    unsigned {
+		if {$value < 128} {
+		    append data [my pack fix_numpos $value]
 		} elseif {$value < 256} {
 		    append data [my pack fix_uint8 $value]
-		} else {
-		    append data [my pack fix_uint16 $value]
-		}
-	    }
-	    int32 {
-		if {$value < -32768} {
-		    append data [my pack fix_int32 $value]
 		} elseif {$value < 65536} {
-		    append data [my pack int16 $value]
-		} else {
-		    append data [my pack fix_uint32 $value]
-		}
-	    }
-	    int64 {
-		if {$value < -2147483648} {
-		    append data [my pack fix_int64 $value]
-		} elseif {$value < 4294967296} {
-		    append data [my pack int32 $value]
-		} else {
-		    append data [my pack fix_uint64 $value]
-		}
-	    }
-	    uint8 {
-		set value [expr {$value & 0xFF}]
-		if {$value < 128} {
-		    append data [my pack fixnumpos $value]
-		} else {
-		    append data [my pack fix_uint8 $value]
-		}
-	    }
-	    uint16 {
-		set value [expr {$value & 0xFFFF}]
-		if {$value < 256} {
-		    append data [my pack uint8 $value]
-		} else {
 		    append data [my pack fix_uint16 $value]
-		}
-	    }
-	    uint32 {
-		set value [expr {$value & 0xFFFFFFFF}]
-		if {$value < 65536} {
-		    append data [my pack int16 $value]
-		} else {
+		} elseif {$value < 4294967296} {
 		    append data [my pack fix_uint32 $value]
-		}
-	    }
-	    uint64 {
-		set value [expr {$value & 0xFFFFFFFFFFFFFFFF}]
-		if {$value < 4294967296} {
-		    append data [my pack int32 $value]
 		} else {
 		    append data [my pack fix_uint64 $value]
 		}
