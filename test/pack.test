@@ -249,6 +249,62 @@ tcltest::test pack-string-4 {pack string} -setup {
     $p destroy
 } -returnCodes {ok} -result [list \uDB\u00\u01\u00\u00\u20 65541]
 
+# Pack bin
+
+tcltest::test pack-bin-1 {pack bin} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack bin 0
+    $p pack bin_body ""
+    $p pack bin 31
+    $p pack bin_body [string repeat " " 31]
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \uC4\u00\uC4\u1F\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20
+
+tcltest::test pack-bin-2 {pack bin} -setup {
+    set p [msgpack::packer new]
+} -body {
+    set result {}
+    $p pack bin 255
+    $p pack bin_body [string repeat " " 255]
+    lappend result [string range [$p data] 0 2] [string length [$p data]]
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result [list \uC4\uFF\u20 257]
+
+tcltest::test pack-bin-3 {pack bin} -setup {
+    set p [msgpack::packer new]
+} -body {
+    set result {}
+    $p pack bin 256
+    $p pack bin_body [string repeat " " 256]
+    lappend result [string range [$p data] 0 3] [string length [$p data]]
+    $p reset
+    $p pack bin 65535
+    $p pack bin_body [string repeat " " 65535]
+    lappend result [string range [$p data] 0 3] [string length [$p data]]
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result [list \uC5\u01\u00\u20 259 \uC5\uFF\uFF\u20 65538]
+
+tcltest::test pack-bin-4 {pack bin} -setup {
+    set p [msgpack::packer new]
+} -body {
+    set result {}
+    $p pack bin 65536
+    $p pack bin_body [string repeat " " 65536]
+    lappend result [string range [$p data] 0 5] [string length [$p data]]
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result [list \uC6\u00\u01\u00\u00\u20 65541]
+
+# Pack boolean
+
 tcltest::test pack-boolean {pack boolean} -setup {
     set p [msgpack::packer new]
 } -body {
@@ -258,6 +314,8 @@ tcltest::test pack-boolean {pack boolean} -setup {
 } -cleanup {
     $p destroy
 } -returnCodes {ok} -result \uC3\uC2
+
+# Pack int
 
 tcltest::test pack-int {pack int} -setup {
     set p [msgpack::packer new]
@@ -275,6 +333,8 @@ tcltest::test pack-int {pack int} -setup {
 } -cleanup {
     $p destroy
 } -returnCodes {ok} -result \uD3\uFF\uFF\uFF\uFD\uAB\uF4\u1C\u00\uD2\uFF\u67\u69\u80\uD1\uD8\uF0\uD0\u9C\uF6\u0A\uD1\u27\u10\uD2\u00\u98\u96\u80\uD3\u00\u00\u00\u02\u54\u0B\uE4\u00
+
+# Pack unsigned
 
 tcltest::test pack-unsigned {pack unsigned} -setup {
     set p [msgpack::packer new]
