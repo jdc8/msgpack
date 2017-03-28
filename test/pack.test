@@ -249,6 +249,16 @@ tcltest::test pack-string-4 {pack string} -setup {
     $p destroy
 } -returnCodes {ok} -result [list \uDB\u00\u01\u00\u00\u20 65541]
 
+tcltest::test pack-boolean {pack boolean} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack boolean true
+    $p pack boolean false
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \uC3\uC2
+
 tcltest::test pack-int {pack int} -setup {
     set p [msgpack::packer new]
 } -body {
