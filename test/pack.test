@@ -266,6 +266,19 @@ tcltest::test pack-int {pack int} -setup {
     $p destroy
 } -returnCodes {ok} -result \uD3\uFF\uFF\uFF\uFD\uAB\uF4\u1C\u00\uD2\uFF\u67\u69\u80\uD1\uD8\uF0\uD0\u9C\uF6\u0A\uD1\u27\u10\uD2\u00\u98\u96\u80\uD3\u00\u00\u00\u02\u54\u0B\uE4\u00
 
+tcltest::test pack-unsigned {pack unsigned} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack unsigned 10
+    $p pack unsigned 200
+    $p pack unsigned 10000
+    $p pack unsigned 10000000
+    $p pack unsigned 10000000000
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \u0a\uCC\uC8\uCD\u27\u10\uCE\u00\u98\u96\u80\uCF\u00\u00\u00\u02\u54\u0B\uE4\u00
+
 # cleanup
 ::tcltest::cleanupTests
 return
