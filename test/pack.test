@@ -303,6 +303,19 @@ tcltest::test pack-bin-4 {pack bin} -setup {
     $p destroy
 } -returnCodes {ok} -result [list \uC6\u00\u01\u00\u00\u20 65541]
 
+# Pack array: just test array prefix, not the elements.
+
+tcltest::test pack-array {pack array} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack array 10
+    $p pack array 100
+    $p pack array 100000
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \u9A\uDC\u00\u64\uDD\u00\u01\u86\uA0
+
 # Pack boolean
 
 tcltest::test pack-boolean {pack boolean} -setup {
