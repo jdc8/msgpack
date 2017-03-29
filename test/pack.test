@@ -316,6 +316,19 @@ tcltest::test pack-array {pack array} -setup {
     $p destroy
 } -returnCodes {ok} -result \u9A\uDC\u00\u64\uDD\u00\u01\u86\uA0
 
+# Pack map: just test map prefix, not the elements.
+
+tcltest::test pack-map {pack map} -setup {
+    set p [msgpack::packer new]
+} -body {
+    $p pack map 10
+    $p pack map 100
+    $p pack map 100000
+    $p data
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result \u8A\uDE\u00\u64\uDF\u00\u01\u86\uA0
+
 # Pack boolean
 
 tcltest::test pack-boolean {pack boolean} -setup {
