@@ -1,0 +1,37 @@
+package require tcltest
+set auto_path [list .. {*}$auto_path]
+package require -exact msgpack 2.1.0
+
+# Unpack nil
+
+tcltest::test unpack-nil {unpack nil} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uC0
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result nil
+
+# Unpack false
+
+tcltest::test unpack-false {unpack false} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uC2
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{boolean 0}}
+
+# Unpack true
+
+tcltest::test unpack-true {unpack true} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uC3
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{boolean 1}}
+
+# cleanup
+::tcltest::cleanupTests
+return
