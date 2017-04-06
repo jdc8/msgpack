@@ -104,7 +104,7 @@ oo::class create msgpack::packer {
 		}
 	    }
 
-	    int {
+	    int - integer {
 		if {$value < -0x80000000} {
 		    append data [my pack fix_int64 $value]
 		} elseif {$value < -0x8000} {
@@ -246,7 +246,7 @@ oo::class create msgpack::unpacker {
 	    set data [string range $data 1 end]
 	    if {$tc < 0x80} {
 		# Positive FixNum
-		lappend l [list integer [expr {$c & 0x7F}]]
+		lappend l [list unsigned [expr {$c & 0x7F}]]
 	    } elseif {($tc & 0xE0) >= 0xE0} {
 		# Negative FixNum
 		binary scan [binary format c [expr {($c & 0x1F) | 0xE0}]] c c
@@ -302,25 +302,25 @@ oo::class create msgpack::unpacker {
 		    my $need_proc 1
 		    binary scan $data c c
 		    set data [string range $data 1 end]
-		    lappend l [list integer [expr {$c & 0xFF}]]
+		    lappend l [list unsigned [expr {$c & 0xFF}]]
 		} elseif {$tc == 0xCD} {
 		    # uint16
 		    my $need_proc 2
 		    binary scan $data S c
 		    set data [string range $data 2 end]
-		    lappend l [list integer [expr {$c & 0xFFFF}]]
+		    lappend l [list unsigned [expr {$c & 0xFFFF}]]
 		} elseif {$tc == 0xCE} {
 		    # uint32
 		    my $need_proc 4
 		    binary scan $data I c
 		    set data [string range $data 4 end]
-		    lappend l [list integer [expr {$c & 0xFFFFFFFF}]]
+		    lappend l [list unsigned [expr {$c & 0xFFFFFFFF}]]
 		} elseif {$tc == 0xCF} {
 		    # uint64
 		    my $need_proc 8
 		    binary scan $data W c
 		    set data [string range $data 8 end]
-		    lappend l [list integer [expr {$c & 0xFFFFFFFFFFFFFFFF}]]
+		    lappend l [list unsigned [expr {$c & 0xFFFFFFFFFFFFFFFF}]]
 		} elseif {$tc == 0xD0} {
 		    # int8
 		    my $need_proc 1
