@@ -32,6 +32,26 @@ tcltest::test unpack-true {unpack true} -setup {
     $p destroy
 } -returnCodes {ok} -result {{boolean 1}}
 
+# Unpack fix_numpos
+
+tcltest::test unpack-fix_numpos {unpack fix_numpos} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \u00\u0A\u7F\u7F
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{unsigned 0} {unsigned 10} {unsigned 127} {unsigned 127}}
+
+# Unpack fix_numneg
+
+tcltest::test unpack-fix_numneg {unpack fix_numneg} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uFF\uF6\uE0\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{integer -1} {integer -10} {integer -32} {integer -1}}
+
 # Unpack int
 
 tcltest::test unpack-int {unpack int} -setup {
