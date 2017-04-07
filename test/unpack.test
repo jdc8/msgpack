@@ -52,6 +52,46 @@ tcltest::test unpack-fix_numneg {unpack fix_numneg} -setup {
     $p destroy
 } -returnCodes {ok} -result {{integer -1} {integer -10} {integer -32} {integer -1}}
 
+# Unpack fix_uint8
+
+tcltest::test unpack-fix_uint8 {unpack fix_uint8} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uCC\u00\uCC\u0A\uCC\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{unsigned 0} {unsigned 10} {unsigned 255}}
+
+# Unpack fix_uint16
+
+tcltest::test unpack-fix_uint16 {unpack fix_uint16} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uCD\u00\u00\uCD\u00\u0A\uCD\uFF\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{unsigned 0} {unsigned 10} {unsigned 65535}}
+
+# Unpack fix_uint32
+
+tcltest::test unpack-fix_uint32 {unpack fix_uint32} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uCE\u00\u00\u00\u00\uCE\u00\u00\u00\u0A\uCE\uFF\uFF\uFF\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{unsigned 0} {unsigned 10} {unsigned 4294967295}}
+
+# Unpack fix_uint64
+
+tcltest::test unpack-fix_uint64 {unpack fix_uint64} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uCF\u00\u00\u00\u00\u00\u00\u00\u00\uCF\u00\u00\u00\u00\u00\u00\u00\u0A\uCF\uFF\uFF\uFF\uFF\uFF\uFF\uFF\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{unsigned 0} {unsigned 10} {unsigned 18446744073709551615}}
+
 # Unpack int
 
 tcltest::test unpack-int {unpack int} -setup {
