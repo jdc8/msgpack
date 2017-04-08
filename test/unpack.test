@@ -92,6 +92,46 @@ tcltest::test unpack-fix_uint64 {unpack fix_uint64} -setup {
     $p destroy
 } -returnCodes {ok} -result {{unsigned 0} {unsigned 10} {unsigned 18446744073709551615}}
 
+# Unpack fix_int8
+
+tcltest::test unpack-fix_int8 {unpack fix_int8} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uD0\u00\uD0\u0A\uD0\uF6\uD0\u80\uD0\u7F
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{integer 0} {integer 10} {integer -10} {integer -128} {integer 127}}
+
+# Unpack fix_int16
+
+tcltest::test unpack-fix_int16 {unpack fix_int16} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uD1\u00\u00\uD1\u00\u0A\uD1\uFF\uF6\uD1\u80\u00\uD1\u7F\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{integer 0} {integer 10} {integer -10} {integer -32768} {integer 32767}}
+
+# Unpack fix_int32
+
+tcltest::test unpack-fix_int32 {unpack fix_int32} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uD2\u00\u00\u00\u00\uD2\u00\u00\u00\u0A\uD2\uFF\uFF\uFF\uF6\uD2\u80\u00\u00\u00\uD2\u7F\uFF\uFF\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{integer 0} {integer 10} {integer -10} {integer -2147483648} {integer 2147483647}}
+
+# Unpack fix_int64
+
+tcltest::test unpack-fix_int64 {unpack fix_int64} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uD3\u00\u00\u00\u00\u00\u00\u00\u00\uD3\u00\u00\u00\u00\u00\u00\u00\u0A\uD3\uFF\uFF\uFF\uFF\uFF\uFF\uFF\uF6\uD3\u80\u00\u00\u00\u00\u00\u00\u00\uD3\u7F\uFF\uFF\uFF\uFF\uFF\uFF\uFF
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{integer 0} {integer 10} {integer -10} {integer -9223372036854775808} {integer 9223372036854775807}}
+
 # Unpack int
 
 tcltest::test unpack-int {unpack int} -setup {
