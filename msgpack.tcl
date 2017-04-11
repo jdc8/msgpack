@@ -141,7 +141,7 @@ oo::class create msgpack::packer {
 		} elseif {$value < 128} {
 		    append data [my pack fix_numpos $value]
 		} elseif {$value < 0x80} {
-		    # ever use, fully covered by fix_numpos
+		    # never used, fully covered by fix_numpos
 		    append data [my pack fix_int8 $value]
 		} elseif {$value < 0x8000} {
 		    append data [my pack fix_int16 $value]
@@ -153,9 +153,7 @@ oo::class create msgpack::packer {
 	    }
 
 	    unsigned {
-		if {$value < 128} {
-		    append data [my pack fix_numpos $value]
-		} elseif {$value < 256} {
+		if {$value < 256} {
 		    append data [my pack fix_uint8 $value]
 		} elseif {$value < 65536} {
 		    append data [my pack fix_uint16 $value]
@@ -269,7 +267,7 @@ oo::class create msgpack::unpacker {
 	    set data [string range $data 1 end]
 	    if {$tc < 0x80} {
 		# Positive FixNum
-		lappend l [list unsigned [expr {$c & 0x7F}]]
+		lappend l [list integer [expr {$c & 0x7F}]]
 	    } elseif {($tc & 0xE0) >= 0xE0} {
 		# Negative FixNum
 		binary scan [binary format c [expr {($c & 0x1F) | 0xE0}]] c c
