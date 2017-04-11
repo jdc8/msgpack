@@ -230,6 +230,36 @@ tcltest::test unpack-bin-4 {unpack bin} -setup {
     $p destroy
 } -returnCodes {ok} -result {bin 65536}
 
+# Unpack array
+
+tcltest::test unpack-array {unpack array} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    set result {}
+    foreach s [$p unpack_string \u9A[string repeat \u20 10]\uDC\u00\u64[string repeat \u20 100]\uDD\u00\u01\u86\uA0[string repeat \u20 100000]] {
+	lassign $s t v
+	lappend result $t [llength $v]
+    }
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {array 10 array 100 array 100000}
+
+# Unpack map
+
+tcltest::test unpack-map {unpack map} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    set result {}
+    foreach s [$p unpack_string \u8A[string repeat \u20 20]\uDE\u00\u64[string repeat \u20 200]\uDF\u00\u01\u86\uA0[string repeat \u20 200000]] {
+	lassign $s t v
+	lappend result $t [llength $v]
+    }
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {map 20 map 200 map 200000}
+
 # Unpack int
 
 tcltest::test unpack-int {unpack int} -setup {
