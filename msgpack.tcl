@@ -376,34 +376,34 @@ oo::class create msgpack::unpacker {
 		    lappend l [list string $c]
 		    set data [string range $data $n end]
 		} elseif {$tc == 0xC4} {
-		    # raw 8
-		    my $need_proc 2
-		    binary scan $data S n
-		    set n [expr {$n & 0xFFFF}]
-		    set data [string range $data 2 end]
+		    # bin 8
+		    my $need_proc 1
+		    binary scan $data c n
+		    set n [expr {$n & 0xFF}]
+		    set data [string range $data 1 end]
 		    my $need_proc $n
 		    binary scan $data a$n c
-		    lappend l [list raw $c]
+		    lappend l [list bin $c]
 		    set data [string range $data $n end]
 		} elseif {$tc == 0xC5} {
-		    # raw 16
+		    # bin 16
 		    my $need_proc 2
 		    binary scan $data S n
 		    set n [expr {$n & 0xFFFF}]
 		    set data [string range $data 2 end]
 		    my $need_proc $n
 		    binary scan $data a$n c
-		    lappend l [list raw $c]
+		    lappend l [list bin $c]
 		    set data [string range $data $n end]
 		} elseif {$tc == 0xC6} {
-		    # raw 32
+		    # bin 32
 		    my $need_proc 4
 		    binary scan $data I n
 		    set n [expr {$n & 0xFFFFFFFF}]
 		    set data [string range $data 4 end]
 		    my $need_proc $n
 		    binary scan $data a$n c
-		    lappend l [list raw $c]
+		    lappend l [list bin $c]
 		    set data [string range $data $n end]
 		} elseif {$tc == 0xDC} {
 		    # array 16

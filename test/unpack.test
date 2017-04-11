@@ -181,6 +181,55 @@ tcltest::test unpack-string-4 {unpack string} -setup {
     $p destroy
 } -returnCodes {ok} -result {string 65536}
 
+# Unpack bin
+
+tcltest::test unpack-bin-1 {unpack bin} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    $p unpack_string \uC4\u00\uC4\u01\u20\uC4\u1F\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20\u20
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {{bin {}} {bin { }} {bin {                               }}}
+
+tcltest::test unpack-bin-2 {unpack bin} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    set result {}
+    foreach s [$p unpack_string "\uC4\u20[string repeat \u20 32]\uC4\uFF[string repeat \u20 255]"] {
+	lassign $s t v
+	lappend result $t [string length $v]
+    }
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {bin 32 bin 255}
+
+tcltest::test unpack-bin-3 {unpack bin} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    set result {}
+    foreach s [$p unpack_string "\uC5\u01\u00[string repeat \u20 256]\uC5\uFF\uFF[string repeat \u20 65535]"] {
+	lassign $s t v
+	lappend result $t [string length $v]
+    }
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {bin 256 bin 65535}
+
+tcltest::test unpack-bin-4 {unpack bin} -setup {
+    set p [msgpack::unpacker new]
+} -body {
+    set result {}
+    foreach s [$p unpack_string "\uC6\u00\u01\u00\u00[string repeat \u20 65536]"] {
+	lassign $s t v
+	lappend result $t [string length $v]
+    }
+    set result
+} -cleanup {
+    $p destroy
+} -returnCodes {ok} -result {bin 65536}
+
 # Unpack int
 
 tcltest::test unpack-int {unpack int} -setup {
