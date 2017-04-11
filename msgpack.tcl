@@ -347,10 +347,10 @@ oo::class create msgpack::unpacker {
 		    lappend l [list integer $c]
 		} elseif {$tc == 0xD9} {
 		    # string 8
-		    my $need_proc 2
-		    binary scan $data S n
-		    set n [expr {$n & 0xFFFF}]
-		    set data [string range $data 2 end]
+		    my $need_proc 1
+		    binary scan $data c n
+		    set n [expr {$n & 0xFF}]
+		    set data [string range $data 1 end]
 		    my $need_proc $n
 		    binary scan $data a$n c
 		    lappend l [list string $c]
