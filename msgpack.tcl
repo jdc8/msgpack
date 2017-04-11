@@ -28,6 +28,29 @@ oo::class create msgpack::packer {
        return $result
     }
 
+    method pack_list {l} {
+	foreach i $l {
+	    lassign $i t v
+	    switch -exact -- $t {
+		array {
+		    my pack array [llength $v]
+		    my pack_list $v
+		}
+		map {
+		    my pack map [expr {[llength $v] / 2}]
+		    my pack_list $v
+		}
+		bin - raw {
+		    my pack bin [string length $v]
+		    my pack bin_body $v
+		}
+		default {
+		    my pack $t $v
+		}
+	    }
+	}
+    }
+
     method pack {type {value 0} {value1 ""} {value2 ""}} {
 	switch -exact -- $type {
 	    nil { append data [binary format c 0xC0] }
@@ -474,17 +497,12 @@ oo::class create msgpack::unpacker {
 
 namespace eval msgpack {
 
-    proc pack {type {value 0} {value1 ""} {value2 ""}} {
+    proc pack {l} {
 	set o [msgpack::packer new]
-	if {$type eq "tcl_array"} {
-	    upvar $value2 a
-	    $o pack $type $value $value1 a
-	} else {
-	    $o pack $type $value $value1 $value2
-	}
-	set s [$o data]
+	$o pack_list $l
+	set d [$o data]
 	$o destroy
-	return $s
+	return $d
     }
 
     proc unpack {s} {
