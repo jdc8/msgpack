@@ -51,7 +51,7 @@ oo::class create msgpack::packer {
 	}
     }
 
-    method pack {type {value 0} {value1 ""} {value2 ""}} {
+    method pack {type {value ""}} {
 	switch -exact -- $type {
 	    nil { append data [binary format c 0xC0] }
 	    true { append data [binary format c 0xC3] }
@@ -87,6 +87,7 @@ oo::class create msgpack::packer {
 	    }
 
 	    bin - raw {
+		# value contains the binary data size, pack binary data with type bin_body
 		if {$value < 256} {
 		    append data [binary format cc 0xC4 $value]
 		} elseif {$value < 65536} {
@@ -100,6 +101,7 @@ oo::class create msgpack::packer {
 	    }
 
 	    array {
+		# value contains the array size, pack array elements separately
 		if {$value < 16} {
 		    append data [binary format c [expr {0x90 | $value}]]
 		} elseif {$value < 65536} {
@@ -110,6 +112,7 @@ oo::class create msgpack::packer {
 	    }
 
 	    map {
+		# value contains the map size, pack map keys/values pairs separately
 		if {$value < 16} {
 		    append data [binary format c [expr {0x80 | $value}]]
 		} elseif {$value < 65536} {
@@ -120,6 +123,7 @@ oo::class create msgpack::packer {
 	    }
 
 	    boolean {
+		# convenience function
 		if {$value} {
 		    append data [my pack true]
 		} else {
@@ -128,6 +132,7 @@ oo::class create msgpack::packer {
 	    }
 
 	    int - integer {
+		# convenience function
 		if {$value < -0x80000000} {
 		    append data [my pack fix_int64 $value]
 		} elseif {$value < -0x8000} {
@@ -153,6 +158,7 @@ oo::class create msgpack::packer {
 	    }
 
 	    unsigned {
+		# convenience function
 		if {$value < 256} {
 		    append data [my pack fix_uint8 $value]
 		} elseif {$value < 65536} {
@@ -164,30 +170,6 @@ oo::class create msgpack::packer {
 		}
 	    }
 
-	    list {
-		set r [my pack array [llength $value1]]
-		foreach e $value1 {
-		    append r [my pack $value $e]
-		}
-		append data $r
-	    }
-	    tcl_array {
-		upvar $value2 a
-		set r [my pack map [array size a]]
-		foreach k [lsort -dictionary [array names a]] {
-		    append r [my pack $value $k]
-		    append r [my pack $value1 $a($k)]
-		}
-		append data $r
-	    }
-	    dict {
-		set r [my pack map [dict size $value2]]
-		dict for {k v} $value2 {
-		    append r [my pack $value $k]
-		    append r [my pack $value1 $v]
-		}
-		append data $r
-	    }
 	    default {
 		error "Unknown msgpack type: $type"
 	    }
