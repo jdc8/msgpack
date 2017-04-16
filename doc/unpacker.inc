@@ -50,13 +50,16 @@ Type information found in the unpacked MessagePack objects can be one of the
 following:
 
 [list_begin options]
-[opt_def nil]
-[opt_def boolean]
-[opt_def integer]
-[opt_def double]
-[opt_def raw]
 [opt_def array]
+[opt_def bin]
+[opt_def boolean]
+[opt_def double]
+[opt_def float]
+[opt_def integer]
 [opt_def map]
+[opt_def nil]
+[opt_def string]
+[opt_def unsigned]
 [list_end]
 
 Values can be nested type/value list.

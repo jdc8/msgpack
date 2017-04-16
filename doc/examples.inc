@@ -6,9 +6,8 @@ Creating a [class msgpack::packer] object and packing some data:
 
 set p [msgpack::packer new]
 
-$p pack int 123456789
+$p pack integer 123456789
 $p pack string "A MessagePack example"
-$p pack dict int string {1 one 2 two}
 set packed_data [$p data]
 $p destroy}]
 
@@ -23,14 +22,13 @@ $u destroy}]
 
 After unpacking, the following list of type/value pairs is returned by the [method unpack_string] method:
 
-[example {{integer 123456789} {raw {A MessagePack example}} {map {{integer 1} {raw one} {integer 2} {raw two}}}}]
+[example {{integer 123456789} {string {A MessagePack example}}}]
 
 The same example using the [cmd pack] utility function for packing the data:
 
 [example {set packed_data ""
 append packed_data [msgpack pack int 0xFFFFFFFF]
-append packed_data [msgpack pack string "A Utility example"]
-append packed_data [msgpack pack dict int string {3 three 4 four}]}]
+append packed_data [msgpack pack string "A Utility example"]}]
 
 An using the [cmd unpack] utility function to unpack the data:
 
@@ -38,4 +36,4 @@ An using the [cmd unpack] utility function to unpack the data:
 
 After unpacking, the following list of type/value pairs is returned by the [cmd unpack] utility function:
 
-[example {{integer 4294967295} {raw {A Utility example}} {map {{integer 3} {raw three} {integer 4} {raw four}}}}]
+[example {{integer 4294967295} {string {A Utility example}}}]

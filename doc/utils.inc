@@ -17,13 +17,11 @@ a Tcl array.
 Convert a MessagePack map as retuned by the [cmd unpack] command or method into
 a Tcl dict.
 
-[call [cmd {msgpack pack}] [arg args]]
+[call [cmd {msgpack pack}] [arg list]]
 
-Pack the specified [arg value]. The packed value is returned. More information
-on how to specify values to be packed can be found in section
-[sectref "Pack options"].
+Pack the specified [arg list] of type and value pairs. The packed value is returned.
 
-[call [cmd {msgpack unpack}] [arg string]]
+[call [cmd {msgpack unpack}] [arg string]]3
 
 Unpack the specified data. A list with unpacked type (see [sectref "Unpacker class"]) and value
 pairs is returned.

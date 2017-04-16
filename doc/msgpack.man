@@ -1,5 +1,5 @@
 [comment {-*- tcl -*- doctools manpage}]
-[manpage_begin msgpack n 1.0.0]
+[manpage_begin msgpack n 2.1.0]
 [copyright {Jos Decoster <jos.decoster@gmail.com>}]
 [moddesc {A pure Tcl implementation of the MessagePack object serialization library}]
 [category  {Serialization}]
@@ -8,7 +8,7 @@
 [keywords {serialization}]
 [titledesc {msgpack Package Reference}]
 [require Tcl 8.6]
-[require msgpack [opt 1.0.0]]
+[require msgpack [opt 2.1.0]]
 [description]
 
 The [term msgpack] package is a pure Tcl implementation the MessagePack object

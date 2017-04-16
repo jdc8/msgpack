@@ -17,17 +17,6 @@ oo::class create msgpack::packer {
 
     method reset {} { set data "" }
 
-    method readable {} {
-       set result {}
-       set tdata $data
-       while {[string length $tdata] > 0} {
-           binary scan $tdata c c
-           set tdata [string range $tdata 1 end]
-           lappend result [format {%02X} [expr {$c & 0xFF}]]
-       }
-       return $result
-    }
-
     method pack_list {l} {
 	foreach i $l {
 	    lassign $i t v
@@ -293,7 +282,7 @@ oo::class create msgpack::unpacker {
 		    my $need_proc 4
 		    binary scan $data R c
 		    set data [string range $data 4 end]
-		    lappend l [list double $c]
+		    lappend l [list float $c]
 		} elseif {$tc == 0xCB} {
 		    # double
 		    my $need_proc 8
