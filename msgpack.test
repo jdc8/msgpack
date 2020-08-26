@@ -197,7 +197,7 @@ tcltest::test uint64 uint64 -body {
            cffffc72815b398000}
 
 
-tcltest::test float float -body {
+tcltest::test float32 float32 -body {
     set tt {}
     foreach v {1 2 3.1415 123456678 6.54e3} {
         lappend tt [binary encode hex [msgpack pack float32 $v]]
@@ -205,7 +205,7 @@ tcltest::test float float -body {
     set tt
 } -result {ca3f800000 ca40000000 ca40490e56 ca4ceb7995 ca45cc6000}
 
-tcltest::test double double -body {
+tcltest::test float64 float64 -body {
     set tt {}
     foreach v {1 2 3.1415 123456678 6.54e3} {
 	lappend tt [binary encode hex [msgpack pack float64 $v]]
