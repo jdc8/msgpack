@@ -11,6 +11,10 @@ specifiers and if needed a value. The list below shows the supported types:
 Add array size to packed data. Must be followed by [cmd size] calls to method
 [method pack] to add the array elements to the packed data.
 
+[opt_def [method bin] [arg bytes]]
+
+Add a byte array (a binary string) to the packed data.
+
 [opt_def [method boolean] [arg data]]
 
 Add a boolean to the packed data. Is equivalent calling methods
@@ -22,10 +26,6 @@ Add a dict to the packed data. This is equivalent to calling method
 [method {pack map}] with the dict size as argument, followed by calling
 method [method {pack keyType}] and method [method {pack valueType}]
 for each key/value pair in the dict.
-
-[opt_def [method double] [arg data]]
-
-Add a double to the packed data.
 
 [opt_def [method false]]
 
@@ -63,9 +63,13 @@ Add a 32 bit unsigned integer to the packed data.
 
 Add a 64 bit unsigned integer to the packed data.
 
-[opt_def [method float] [arg data]]
+[opt_def [method float32] [arg data]]
 
-Add a float to the packed data.
+add a 32-bit float to the packed data.
+
+[opt_def [method float64] [arg data]]
+
+Add a 64-bit (double precision) float to the packed data.
 
 [opt_def [method int] [arg data]]
 
@@ -110,23 +114,13 @@ calls to method [method pack] to add the keys and values to the packed data.
 
 Add a nil to the packed data.
 
-[opt_def [method raw] [arg size]]
-
-Add the size of a raw body to the packed data. Must precede a call to
-method [method {pack raw_body}].
-
-[opt_def [method raw_body] [arg data]]
-
-Add raw data to the packed data. Must be preceded by a call to method [method {pack raw}].
-
 [opt_def [method short] [arg data]]
 
 Add a short integer to the packed data.
 
-[opt_def [method string] [arg string]]
+[opt_def [method str] [arg string]]
 
-Add a string to the packed data. Is equivalent to calling methods [method {pack raw}]
-and [method {pack raw_body}].
+Add a string to the packed data.
 
 [opt_def [method tcl_array] "[arg keyType] [arg valueType] [arg arrayName]"]
 
