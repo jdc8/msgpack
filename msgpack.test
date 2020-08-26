@@ -439,16 +439,58 @@ tcltest::test ext ext -body {
 ]
 
 
-tcltest::test ext-timestamp-1 Timestamp -body {
+tcltest::test ext-timestamp-1 timestamp32 -body {
     msgpack unpack [binary decode hex 81a56576656e7482a56c6162656caa74696d6520626567616ea464617465d6ff00000000]
 } -result {{map {{str event} {map {{str label} {str {time began}}\
                                    {str date} {timestamp32 0}}}}}}
 
-tcltest::test ext-timestamp-2 Timestamp -body {
-    set tt {}
+tcltest::test ext-timestamp-2 timestamp32 -body {
     set enc [msgpack pack timestamp32 1598459831]
     list [binary encode hex $enc] [msgpack unpack $enc]
 } -result {d6ff5f468fb7 {{timestamp32 1598459831}}}
+
+tcltest::test ext-timestamp-3 timestamp64 -body {
+    set enc {}
+    lappend enc [msgpack pack timestamp64 1598459831 0]
+    lappend enc [msgpack pack timestamp64 1598459831 123456789]
+    lappend enc [msgpack pack timestamp64 1598459831 999999999]
+
+    set tt {}
+    foreach x $enc {
+        lappend tt [binary encode hex $x] [msgpack unpack $x]
+    }
+    set tt
+} -result {d7ff000000005f468fb7 {{timestamp64 1598459831 0}}\
+           d7ff1d6f34545f468fb7 {{timestamp64 1598459831 123456789}}\
+           d7ffee6b27fc5f468fb7 {{timestamp64 1598459831 999999999}}}
+
+tcltest::test ext-timestamp-4 timestamp96 -body {
+    set enc {}
+    lappend enc [msgpack pack timestamp96 1598459831 0]
+    lappend enc [msgpack pack timestamp96 1598459831 123456789]
+    lappend enc [msgpack pack timestamp96 1598459831 999999999]
+
+    set tt {}
+    foreach x $enc {
+        lappend tt [binary encode hex $x] [msgpack unpack $x]
+    }
+    set tt
+} -result {c70cff00000000000000005f468fb7 {{timestamp96 1598459831 0}}\
+           c70cff075bcd15000000005f468fb7 {{timestamp96 1598459831 123456789}}\
+           c70cff3b9ac9ff000000005f468fb7 {{timestamp96 1598459831 999999999}}}
+
+tcltest::test ext-timestamp-5 {milliseconds and microseconds} -body {
+    set enc {}
+    lappend enc [msgpack pack milliseconds 1598463308768]
+    lappend enc [msgpack pack microseconds 1598463300642468]
+
+    set tt {}
+    foreach x $enc {
+        lappend tt [binary encode hex $x] [msgpack unpack $x]
+    }
+    set tt
+} -result {c70cff00000300000000005f469d4c {{timestamp96 1598463308 768}}\
+           c70cff0009cda4000000005f469d44 {{timestamp96 1598463300 642468}}}
 
 
 tcltest::test ext-unpacker-1 {Add custom unpacker} -setup {

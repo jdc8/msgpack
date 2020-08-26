@@ -229,6 +229,38 @@ oo::class create msgpack::packer {
                     $value & 0xFFFFFFFF
                 }]]]
             }
+            timestamp64 {
+                # $value is seconds (34 bits unsigned), $value1 is nanoseconds
+                # (30 bits unsigned).
+                if {$value1 > 999999999} { error {nanoseconds exceed 999999999} }
+
+                append data [my pack fix_ext8 -1 [binary format W [expr {
+                    (($value1 << 34) | $value) & 0xFFFFFFFFFFFFFFFF
+                }]]]
+            }
+            timestamp96 {
+                # $value is seconds (64 bits signed), $value1 is nanoseconds
+                # (32 bits unsigned)
+                if {$value1 > 999999999} { error {nanoseconds exceed 999999999} }
+
+                append data [my pack ext -1 [binary format IW [expr {
+                    $value1 & 0xFFFFFFFF
+                }] $value]]
+            }
+            milliseconds {
+                append data [my pack timestamp96 [expr {
+                    round($value / 1000)
+                }] [expr {
+                    $value % 1000
+                }]]
+            }
+            microseconds {
+                append data [my pack timestamp96 [expr {
+                    round($value / 1000000)
+                }] [expr {
+                    $value % 1000000
+                }]]
+            }
         }
         return
     }
@@ -241,14 +273,28 @@ oo::class create msgpack::unpacker {
     constructor {} {
         set ext_unpackers {
             -1 {apply {{type data} {
-                # For now we only support 32-bit timestamps.
-                if {[string length $data] != 4} {
-                    return [list ext $type $data]
-                }
+                set len [string length $data]
+                if {$len == 4} {
+                    binary scan $data I s
+                    set s [expr { $s & 0xFFFFFFFF }]
 
-                binary scan $data I t
-                set t [expr { $t & 0xFFFFFFFF }]
-                return [list timestamp32 $t]
+                    return [list timestamp32 $s]
+                } elseif {$len == 8} {
+                    binary scan $data W t
+                    set t [expr { $t & 0xFFFFFFFFFFFFFFFF }]
+
+                    set ns [expr { $t >> 34 }]
+                    set s [expr { $t & 0X00000003FFFFFFFF }]
+
+                    return [list timestamp64 $s $ns]
+                } elseif {$len == 12} {
+                    binary scan $data IW ns s
+
+                    set ns [expr { $ns & 0xFFFFFFFFFFFFFFFF }]
+                    return [list timestamp96 $s $ns]
+                } else {
+                    error [list can't decode timestamp of length $len]
+                }
             }}}
         }
     }
