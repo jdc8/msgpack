@@ -527,6 +527,16 @@ tcltest::test ext-unpacker-2 {Remove timestamp unpacker} -setup {
     $up unpack_string [msgpack pack timestamp32 1598459831]
 } -result "{ext -1 \x5f\x46\x8f\xb7}"
 
+tcltest::test ext-unpacker-3 {Get ext unpackers} -setup {
+    set up [msgpack::unpacker new]
+} -cleanup {
+    catch { $up destroy }
+} -body {
+    set tt {}
+    lappend tt [$up set_ext_unpacker]
+    lappend tt [$up set_ext_unpacker -1]
+} -match regexp -result {\s*-1 \{apply \{\{type data\}.*apply}
+
 
 tcltest::test pack-unknown-type pack-unknown-type -body {
     msgpack pack foo 99

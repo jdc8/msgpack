@@ -308,8 +308,20 @@ oo::class create msgpack::unpacker {
         }
     }
 
-    method set_ext_unpacker {type script} {
-        dict set ext_unpackers $type $script
+    method set_ext_unpacker args {
+        lassign $args type script
+        switch [llength $args] {
+            0 { return $ext_unpackers }
+            1 { return [dict get $ext_unpackers $type] }
+            2 {
+                dict set ext_unpackers $type $script
+                return {}
+            }
+            default {
+                error "wrong # args: should be
+                       \"set_ext_unpacker ?type? ?script?\""
+            }
+        }
     }
 
     method unpack_ext {type data} {
