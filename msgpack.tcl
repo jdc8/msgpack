@@ -302,7 +302,7 @@ oo::class create msgpack::unpacker {
                     my $need_proc 1
                     binary scan $data c n
                     set n [expr {$n & 0xFF}]
-                    set data [string range $data 2 end]
+                    set data [string range $data 1 end]
                     my $need_proc $n
                     binary scan $data a$n c
                     lappend l [list bin $c]
