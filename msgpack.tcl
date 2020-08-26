@@ -644,6 +644,8 @@ oo::class create msgpack::unpacker {
                         lappend a {*}[my unpack_coro 1 $coro]
                     }
                     lappend l [list map $a]
+                } else {
+                    error [list unknown type: $tc]
                 }
             }
             if {$nested} {
