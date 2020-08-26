@@ -241,6 +241,19 @@ tcltest::test bin bin -body {
     c6000186a0[string repeat 69 100000] \
 ]
 
+tcltest::test bin-unpack-8 bin -body {
+    msgpack unpack [msgpack pack bin hello]
+} -result {{bin hello}}
+
+tcltest::test bin-unpack-16 bin -body {
+    msgpack unpack [msgpack pack bin hell[string repeat o 300]]
+} -match regexp -result {{bin hello{150}o{150}}}
+
+tcltest::test bin-unpack-32 bin -body {
+    msgpack unpack [msgpack pack bin hell[string repeat o 100000]]
+} -match regexp -result {{bin hello+}}
+
+
 tcltest::test str str -body {
     set tt {}
     foreach v [list \
@@ -264,6 +277,18 @@ tcltest::test str str -body {
     db00010000[string repeat 68 65536] \
     db000186a0[string repeat 69 100000] \
 ]
+
+tcltest::test str-unpack-8 str -body {
+    msgpack unpack [msgpack pack str hello]
+} -result {{str hello}}
+
+tcltest::test str-unpack-16 str -body {
+    msgpack unpack [msgpack pack str hell[string repeat o 300]]
+} -match regexp -result {{str hello{150}o{150}}}
+
+tcltest::test str-unpack-32 str -body {
+    msgpack unpack [msgpack pack str hell[string repeat o 100000]]
+} -match regexp -result {{str hello+}}
 
 
 tcltest::test array-list array-list -body {
