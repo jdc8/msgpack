@@ -1,0 +1,13 @@
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install dependencies
+      run: sudo apt install tcl
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Run tests
+      run: tclsh msgpack.test -constraints slowTests 
+    
