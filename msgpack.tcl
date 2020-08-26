@@ -1,5 +1,5 @@
 package require Tcl 8.6
-package provide msgpack 1.0.0
+package provide msgpack 2.0.0
 
 namespace eval msgpack {}
 
@@ -113,8 +113,8 @@ oo::class create msgpack::packer {
             fix_uint16 { append data [binary format cS 0xCD [expr {$value & 0xFFFF}]] }
             fix_uint32 { append data [binary format cI 0xCE [expr {$value & 0xFFFFFFFF}]] }
             fix_uint64 { append data [binary format cW 0xCF [expr {$value & 0xFFFFFFFFFFFFFFFF}]] }
-            float { append data [binary format cR 0xCA $value] }
-            double { append data [binary format cQ 0xCB $value] }
+            float32 { append data [binary format cR 0xCA $value] }
+            float64 { append data [binary format cQ 0xCB $value] }
             nil { append data [binary format c 0xC0] }
             true { append data [binary format c 0xC3] }
             false { append data [binary format c 0xC2] }
@@ -160,22 +160,22 @@ oo::class create msgpack::packer {
                 }
                 append data $r
             }
-            raw {
-                if {$value < 32} {
-                    append data [binary format c [expr {0xA0 | $value}]]
-                } elseif {$value < 65536} {
-                    append data [binary format cS 0xDA $value]
+            bin {
+                set n [string length $value]
+                if {$n < 256} {
+                    append data [binary format cca* 0xC4 $n $value]
+                } elseif {$n < 65536} {
+                    append data [binary format cSa* 0xC5 $n $value]
                 } else {
-                    append data [binary format cI 0xDB $value]
+                    append data [binary format cIa* 0xC6 $n $value]
                 }
             }
-            raw_body {
-                append data [binary format a* $value]
-            }
-            string {
+            str {
                 set n [string length $value]
                 if {$n < 32} {
                     append data [binary format ca* [expr {0xA0 | $n}] $value]
+                } elseif {$n < 256} {
+                    append data [binary format cca* 0xD9 $n $value]
                 } elseif {$n < 65536} {
                     append data [binary format cSa* 0xDA $n $value]
                 } else {
@@ -217,7 +217,7 @@ oo::class create msgpack::unpacker {
         if {[llength $callback] == 0} {
             return $l
         }
-    } 
+    }
 
     method NeedCoro {n} {
         while {1} {
@@ -281,11 +281,11 @@ oo::class create msgpack::unpacker {
                 }
                 lappend l [list array $a]
             } elseif {$tc >= 0xA0 && $tc <= 0xBF} {
-                # FixRaw
+                # FixStr
                 set n [expr {$tc & 0x1F}]
                 my $need_proc $n
                 binary scan $data a$n c
-                lappend l [list raw $c]
+                lappend l [list str $c]
                 set data [string range $data $n end]
             } else {
                 if {$tc == 0xC0} {
@@ -297,18 +297,48 @@ oo::class create msgpack::unpacker {
                 } elseif {$tc == 0xC3} {
                     # true
                     lappend l [list boolean 1]
+                } elseif {$tc == 0xC4} {
+                    # bin 8
+                    my $need_proc 1
+                    binary scan $data c n
+                    set n [expr {$n & 0xFF}]
+                    set data [string range $data 2 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [list bin $c]
+                    set data [string range $data $n end]
+                } elseif {$tc == 0xC5} {
+                    # bin 16
+                    my $need_proc 2
+                    binary scan $data S n
+                    set n [expr {$n & 0xFFFF}]
+                    set data [string range $data 2 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [list bin $c]
+                    set data [string range $data $n end]
+                } elseif {$tc == 0xC6} {
+                    # bin 32
+                    my $need_proc 4
+                    binary scan $data I n
+                    set n [expr {$n & 0xFFFFFFFF}]
+                    set data [string range $data 4 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [list bin $c]
+                    set data [string range $data $n end]
                 } elseif {$tc == 0xCA} {
-                    # float
+                    # float32
                     my $need_proc 4
                     binary scan $data R c
                     set data [string range $data 4 end]
-                    lappend l [list double $c]
+                    lappend l [list float32 $c]
                 } elseif {$tc == 0xCB} {
-                    # double
+                    # float64
                     my $need_proc 8
                     binary scan $data Q c
                     set data [string range $data 8 end]
-                    lappend l [list double $c]
+                    lappend l [list float64 $c]
                 } elseif {$tc == 0xCC} {
                     # uint8
                     my $need_proc 1
@@ -358,24 +388,24 @@ oo::class create msgpack::unpacker {
                     set data [string range $data 8 end]
                     lappend l [list integer $c]
                 } elseif {$tc == 0xDA} {
-                    # raw 16
+                    # string 16
                     my $need_proc 2
                     binary scan $data S n
                     set n [expr {$n & 0xFFFF}]
                     set data [string range $data 2 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [list raw $c]
+                    lappend l [list str $c]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xDB} {
-                    # raw 32
+                    # string 32
                     my $need_proc 4
                     binary scan $data I n
                     set n [expr {$n & 0xFFFFFFFF}]
                     set data [string range $data 4 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [list raw $c]
+                    lappend l [list str $c]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xDC} {
                     # array 16
