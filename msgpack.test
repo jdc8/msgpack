@@ -335,7 +335,7 @@ tcltest::test map-dict-tcl_array-65536 map-dict-tcl_array-65536} -body {
 } -result {1 1} -constraints slowTests
 
 
-tcltest::test nested nested -body {
+tcltest::test nested-1 nested -body {
     set tt {}
     append tt [msgpack pack array 6]
     append tt [msgpack pack int 5]
@@ -349,6 +349,10 @@ tcltest::test nested nested -body {
 } -result {{array {{integer 5} {str vijf} {integer 6}\
             {map {{integer 1} {str twee} {integer 3} {str vier}}}\
             {integer 7} {str zeven}}}}
+
+tcltest::test nested-2 nested -body {
+    msgpack unpack [binary decode hex 82a7636c69656e747382a46461746194c40567616d6d61c40564656c74610102a5686f73747392c405616c706861c4056f6d656761a8646174616261736583ae636f6e6e656374696f6e5f6d6178cd1388a7656e61626c6564c3a5706f72747393cd1f41cd1f41cd1f42]
+} -result {{map {{str clients} {map {{str data} {array {{bin gamma} {bin delta} {integer 1} {integer 2}}} {str hosts} {array {{bin alpha} {bin omega}}}}} {str database} {map {{str connection_max} {integer 5000} {str enabled} {boolean 1} {str ports} {array {{integer 8001} {integer 8001} {integer 8002}}}}}}}}
 
 
 # Exit with a nonzero status if there are failed tests.
