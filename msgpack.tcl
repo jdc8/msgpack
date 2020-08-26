@@ -281,7 +281,7 @@ oo::class create msgpack::unpacker {
                     binary scan $data I s
                     set s [expr { $s & 0xFFFFFFFF }]
 
-                    return [list timestamp32 $s]
+                    return [list timestamp $s 0]
                 } elseif {$len == 8} {
                     binary scan $data W t
                     set t [expr { $t & 0xFFFFFFFFFFFFFFFF }]
@@ -289,12 +289,12 @@ oo::class create msgpack::unpacker {
                     set ns [expr { $t >> 34 }]
                     set s [expr { $t & 0X00000003FFFFFFFF }]
 
-                    return [list timestamp64 $s $ns]
+                    return [list timestamp $s $ns]
                 } elseif {$len == 12} {
                     binary scan $data IW ns s
 
                     set ns [expr { $ns & 0xFFFFFFFFFFFFFFFF }]
-                    return [list timestamp96 $s $ns]
+                    return [list timestamp $s $ns]
                 } else {
                     error [list can't decode timestamp of length $len]
                 }
