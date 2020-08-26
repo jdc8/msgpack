@@ -1,5 +1,5 @@
 [comment {-*- tcl -*- doctools manpage}]
-[manpage_begin msgpack n 1.0.0]
+[manpage_begin msgpack n 2.0.0]
 [copyright {Jos Decoster <jos.decoster@gmail.com>}]
 [moddesc {A pure Tcl implementation of the MessagePack object serialization library}]
 [category  {Serialization}]
@@ -8,11 +8,11 @@
 [keywords {serialization}]
 [titledesc {msgpack Package Reference}]
 [require Tcl 8.6]
-[require msgpack [opt 1.0.0]]
+[require msgpack [opt 2.0.0]]
 [description]
 
 The [term msgpack] package is a pure Tcl implementation the MessagePack object
-serialization library. You can find the wrapper code at GitHub:
+serialization library. You can find the code at GitHub:
 [uri https://github.com/jdc8/msgpack]. MessagePack can be found at
 [uri http://msgpack.org/].
 
@@ -39,8 +39,7 @@ and/or documentation.
 
 [section "License"]
 
-The wrapper code is relased under the BSD license (specifically Modified BSD aka
-New BSD aka 3-clause BSD). Check COPYING.BSD for more info about the license
-used for this wrapper.
+The code is released under the BSD license (specifically Modified BSD aka
+New BSD aka 3-clause BSD). Check COPYING.BSD for more info about the license.
 
 [manpage_end]

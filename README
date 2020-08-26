@@ -1,7 +1,7 @@
 
 msgpack - A pure Tcl implementation of the MessagePack object serialization library
-Generated from file '' by tcllib/doctools with format 'text'
-msgpack(n) 1.0.0  "A pure Tcl implementation of the MessagePack object serialization library"
+Generated from file 'msgpack.man' by tcllib/doctools with format 'text'
+msgpack(n) 2.0.0  "A pure Tcl implementation of the MessagePack object serialization library"
 
 NAME
 ====
@@ -12,7 +12,7 @@ SYNOPSIS
 ========
 
 package require Tcl 8.6
-package require msgpack ?1.0.0?
+package require msgpack ?2.0.0?
 
 msgpack::packer new
 packerObject data
@@ -33,7 +33,7 @@ DESCRIPTION
 ===========
 
 The _msgpack_ package is a pure Tcl implementation the MessagePack object
-serialization library. You can find the wrapper code at GitHub:
+serialization library. You can find the code at GitHub:
 <URL:https://github.com/jdc8/msgpack>. MessagePack can be found at
 <URL:http://msgpack.org/>.
 
@@ -95,7 +95,7 @@ Unpacker class
 
         *   Translation _binary_
 
-        Encoding _binary_
+        *   Encoding _binary_
 
         Opening and closing the istream is the responsability of the script
         calling the unpack_stream method.
@@ -117,9 +117,13 @@ following:
 
     integer
 
-    double
+    float32
 
-    raw
+    float64
+
+    bin
+
+    str
 
     array
 
@@ -167,6 +171,10 @@ specifiers and if needed a value. The list below shows the supported types:
         Add array size to packed data. Must be followed by size calls to method
         pack to add the array elements to the packed data.
 
+    bin bytes
+
+        Add a byte array (a binary string) to the packed data.
+
     boolean data
 
         Add a boolean to the packed data. Is equivalent calling methods pack
@@ -177,10 +185,6 @@ specifiers and if needed a value. The list below shows the supported types:
         Add a dict to the packed data. This is equivalent to calling method pack
         map with the dict size as argument, followed by calling method pack
         keyType and method pack valueType for each key/value pair in the dict.
-
-    double data
-
-        Add a double to the packed data.
 
     false
 
@@ -218,9 +222,13 @@ specifiers and if needed a value. The list below shows the supported types:
 
         Add a 64 bit unsigned integer to the packed data.
 
-    float data
+    float32 data
 
-        Add a float to the packed data.
+        add a 32-bit float to the packed data.
+
+    float64 data
+
+        Add a 64-bit (double precision) float to the packed data.
 
     int data
 
@@ -270,24 +278,13 @@ specifiers and if needed a value. The list below shows the supported types:
 
         Add a nil to the packed data.
 
-    raw size
-
-        Add the size of a raw body to the packed data. Must precede a call to
-        method pack raw_body.
-
-    raw_body data
-
-        Add raw data to the packed data. Must be preceded by a call to method
-        pack raw.
-
     short data
 
         Add a short integer to the packed data.
 
-    string string
+    str string
 
-        Add a string to the packed data. Is equivalent to calling methods pack
-        raw and pack raw_body.
+        Add a string to the packed data.
 
     tcl_array keyType valueType arrayName
 
@@ -346,8 +343,8 @@ Creating a *msgpack::packer* object and packing some data:
 | set p [msgpack::packer new]
 
 | $p pack int 123456789
-| $p pack string "A MessagePack example"
-| $p pack dict int string {1 one 2 two}
+| $p pack str "A MessagePack example"
+| $p pack dict int str {1 one 2 two}
 | set packed_data [$p data]
 | $p destroy
 
@@ -363,14 +360,14 @@ Now unpack the packed data using a *msgpack::packer* object:
 After unpacking, the following list of type/value pairs is returned by the
 unpack_string method:
 
-| {integer 123456789} {raw {A MessagePack example}} {map {{integer 1} {raw one} {integer 2} {raw two}}}
+| {integer 123456789} {str {A MessagePack example}} {map {{integer 1} {str one} {integer 2} {str two}}}
 
 The same example using the pack utility function for packing the data:
 
 | set packed_data ""
 | append packed_data [msgpack pack int 0xFFFFFFFF]
-| append packed_data [msgpack pack string "A Utility example"]
-| append packed_data [msgpack pack dict int string {3 three 4 four}]
+| append packed_data [msgpack pack bin "A Utility example"]
+| append packed_data [msgpack pack dict int str {3 three 4 four}]
 
 An using the unpack utility function to unpack the data:
 
@@ -379,7 +376,7 @@ An using the unpack utility function to unpack the data:
 After unpacking, the following list of type/value pairs is returned by the
 unpack utility function:
 
-| {integer 4294967295} {raw {A Utility example}} {map {{integer 3} {raw three} {integer 4} {raw four}}}
+| {integer 4294967295} {bin {A Utility example}} {map {{integer 3} {str three} {integer 4} {str four}}}
 
 Bugs, ideas, feedback
 =====================
@@ -392,9 +389,8 @@ enhancements you may have for either package and/or documentation.
 License
 =======
 
-The wrapper code is relased under the BSD license (specifically Modified BSD aka
-New BSD aka 3-clause BSD). Check COPYING.BSD for more info about the license
-used for this wrapper.
+The code is released under the BSD license (specifically Modified BSD aka New
+BSD aka 3-clause BSD). Check COPYING.BSD for more info about the license.
 
 KEYWORDS
 ========
@@ -410,3 +406,4 @@ COPYRIGHT
 =========
 
 Copyright (c) Jos Decoster <jos.decoster@gmail.com>
+
