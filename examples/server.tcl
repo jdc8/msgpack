@@ -21,8 +21,8 @@ proc callback {o cmd data} {
     puts $o/$cmd/$data
     # Close socket and clean up the unpacker if client disconnected
     if {$cmd eq "eof"} {
-        close $data
-        $o destroy
+    close $data
+    $o destroy
     }
 }
 
