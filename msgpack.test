@@ -528,9 +528,30 @@ tcltest::test ext-unpacker-2 {Remove timestamp unpacker} -setup {
 } -result "{ext -1 \x5f\x46\x8f\xb7}"
 
 
-tcltest::test pack-unknown-type unknown-type -body {
+tcltest::test pack-unknown-type pack-unknown-type -body {
     msgpack pack foo 99
 } -returnCodes error -result {unknown type: foo}
+
+
+
+tcltest::test unpack-not-long-enough-array unpack-not-long-enough -body {
+    msgpack unpack \xDC\x00\x05\xFF
+} -match glob -returnCodes error -result {input string not long enough*}
+
+tcltest::test unpack-not-long-enough-bin unpack-not-long-enough -body {
+    msgpack unpack \xC4\x05\xFF
+} -returnCodes error -result {input string not long enough,\
+                              need 5 byte(s), only 1 left}
+
+tcltest::test unpack-not-long-enough-ext unpack-not-long-enough -body {
+    msgpack unpack \xC7\x05\x01\xFF
+} -returnCodes error -result {input string not long enough,\
+                              need 5 byte(s), only 1 left}
+
+tcltest::test unpack-not-long-enough-str unpack-not-long-enough -body {
+    msgpack unpack \xD9\x05\xFF
+} -returnCodes error -result {input string not long enough,\
+                              need 5 byte(s), only 1 left}
 
 
 # Exit with a nonzero status if there are failed tests.
