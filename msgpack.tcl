@@ -105,6 +105,37 @@ oo::class create msgpack::packer {
                     append data [my pack fix_uint64 $value]
                 }
             }
+            fix_ext1 {
+                # $value is the extension type and $value1 is the byte array.
+                append data [binary format cca1 0xD4 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext2 {
+                append data [binary format cca2 0xD5 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext4 {
+                append data [binary format cca4 0xD6 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext8 {
+                append data [binary format cca8 0xD7 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext16 {
+                append data [binary format cca16 0xD8 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
             fix_int8 { append data [binary format cc 0xD0 [expr {$value & 0xFF}]] }
             fix_int16 { append data [binary format cS 0xD1 [expr {$value & 0xFFFF}]] }
             fix_int32 { append data [binary format cI 0xD2 [expr {$value & 0xFFFFFFFF}]] }
@@ -182,6 +213,22 @@ oo::class create msgpack::packer {
                     append data [binary format cIa* 0xDB $n $value]
                 }
             }
+            ext {
+                # $value is the extension type and $value1 is the byte array.
+                set n [string length $value1]
+                if {$n < 256} {
+                    append data [binary format ccca* 0xC7 $n $value $value1]
+                } elseif {$n < 65536} {
+                    append data [binary format cSca* 0xC8 $n $value $value1]
+                } else {
+                    append data [binary format cIca* 0xC9 $n $value $value1]
+                }
+            }
+            timestamp32 {
+                append data [my pack fix_ext4 -1 [binary format I [expr {
+                    $value & 0xFFFFFFFF
+                }]]]
+            }
         }
         return
     }
@@ -189,15 +236,40 @@ oo::class create msgpack::packer {
 
 oo::class create msgpack::unpacker {
 
-    variable data stream callback coro
+    variable data stream callback coro ext_unpackers
 
     constructor {} {
+        set ext_unpackers {
+            -1 {apply {{type data} {
+                # For now we only support 32-bit timestamps.
+                if {[string length $data] != 4} {
+                    return [list ext $type $data]
+                }
+
+                binary scan $data I t
+                set t [expr { $t & 0xFFFFFFFF }]
+                return [list timestamp32 $t]
+            }}}
+        }
     }
 
     destructor {
         if {[info exists coro]} {
             rename $coro {}
         }
+    }
+
+    method set_ext_unpacker {type script} {
+        dict set ext_unpackers $type $script
+    }
+
+    method unpack_ext {type data} {
+        if {[dict exists $ext_unpackers $type]
+            && [dict get $ext_unpackers $type] ne {}} {
+            return [{*}[dict get $ext_unpackers $type] $type $data]
+        }
+
+        return [list ext $type $data]
     }
 
     method unpack_stream {istream icallback} {
@@ -327,7 +399,37 @@ oo::class create msgpack::unpacker {
                     binary scan $data a$n c
                     lappend l [list bin $c]
                     set data [string range $data $n end]
-                } elseif {$tc == 0xCA} {
+                } elseif {$tc == 0xC7} {
+                    # ext 8
+                    my $need_proc 2
+                    binary scan $data cc n ext_type
+                    set n [expr {$n & 0xFF}]
+                    set data [string range $data 2 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [my unpack_ext $ext_type $c]
+                    set data [string range $data $n end]
+                } elseif {$tc == 0xC8} {
+                    # ext 16
+                    my $need_proc 3
+                    binary scan $data Sc n ext_type
+                    set n [expr {$n & 0xFFFF}]
+                    set data [string range $data 3 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [my unpack_ext $exp_type $c]
+                    set data [string range $data $n end]
+                } elseif {$tc == 0xC9} {
+                    # ext 32
+                    my $need_proc 5
+                    binary scan $data Ic n ext_type
+                    set n [expr {$n & 0xFFFFFFFF}]
+                    set data [string range $data 5 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [my unpack_ext $ext_type $c]
+                    set data [string range $data $n end]
+                 } elseif {$tc == 0xCA} {
                     # float32
                     my $need_proc 4
                     binary scan $data R c
@@ -387,6 +489,36 @@ oo::class create msgpack::unpacker {
                     binary scan $data W c
                     set data [string range $data 8 end]
                     lappend l [list integer $c]
+                } elseif {$tc == 0xD4} {
+                    # fixext 1
+                    my $need_proc 2
+                    binary scan $data ca1 ext_type c
+                    set data [string range $data 2 end]
+                    lappend l [list ext $ext_type $c]
+                } elseif {$tc == 0xD5} {
+                    # fixext 2
+                    my $need_proc 3
+                    binary scan $data ca2 ext_type c
+                    set data [string range $data 3 end]
+                    lappend l [my unpack_ext $ext_type $c]
+                } elseif {$tc == 0xD6} {
+                    # fixext 4
+                    my $need_proc 5
+                    binary scan $data ca4 ext_type c
+                    set data [string range $data 5 end]
+                    lappend l [my unpack_ext $ext_type $c]
+                } elseif {$tc == 0xD7} {
+                    # fixext 8
+                    my $need_proc 9
+                    binary scan $data ca8 ext_type c
+                    set data [string range $data 9 end]
+                    lappend l [my unpack_ext $ext_type $c]
+                } elseif {$tc == 0xD8} {
+                    # fixext 16
+                    my $need_proc 17
+                    binary scan $data ca16 ext_type c
+                    set data [string range $data 17 end]
+                    lappend l [my unpack_ext $ext_type $c]
                 } elseif {$tc == 0xDA} {
                     # string 16
                     my $need_proc 2

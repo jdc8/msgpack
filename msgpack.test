@@ -220,8 +220,8 @@ tcltest::test double double -body {
 tcltest::test bin bin -body {
     set tt {}
     foreach v [list \
-        {} a bb ccc dddd [string repeat e 31] [string repeat e 32] \
-        [string repeat f 33] [string repeat g 65535] [string repeat h 65536] \
+        {} a bb ccc dddd [string repeat e 255] [string repeat e 256] \
+        [string repeat f 257] [string repeat g 65535] [string repeat h 65536] \
         [string repeat i 100000] \
     ] {
 	lappend tt [binary encode hex [msgpack pack bin $v]]
@@ -233,9 +233,9 @@ tcltest::test bin bin -body {
     c4026262 \
     c403636363 \
     c40464646464 \
-    c41f[string repeat 65 31] \
-    c420[string repeat 65 32] \
-    c421[string repeat 66 33] \
+    c4ff[string repeat 65 255] \
+    c50100[string repeat 65 256] \
+    c50101[string repeat 66 257] \
     c5ffff[string repeat 67 65535] \
     c600010000[string repeat 68 65536] \
     c6000186a0[string repeat 69 100000] \
@@ -353,6 +353,137 @@ tcltest::test nested-1 nested -body {
 tcltest::test nested-2 nested -body {
     msgpack unpack [binary decode hex 82a7636c69656e747382a46461746194c40567616d6d61c40564656c74610102a5686f73747392c405616c706861c4056f6d656761a8646174616261736583ae636f6e6e656374696f6e5f6d6178cd1388a7656e61626c6564c3a5706f72747393cd1f41cd1f41cd1f42]
 } -result {{map {{str clients} {map {{str data} {array {{bin gamma} {bin delta} {integer 1} {integer 2}}} {str hosts} {array {{bin alpha} {bin omega}}}}} {str database} {map {{str connection_max} {integer 5000} {str enabled} {boolean 1} {str ports} {array {{integer 8001} {integer 8001} {integer 8002}}}}}}}}
+
+
+tcltest::test fix_ext1 fix_ext1 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext1 42 !]
+    lappend enc [msgpack pack fix_ext1 -5 \xFF]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d42a21 d4fbff {{ext 42 !}} {{ext -5 \xFF}}"
+
+tcltest::test fix_ext2 fix_ext2 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext2 42 !]
+    lappend enc [msgpack pack fix_ext2 3 \xCA\xFE]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d52a2100 d503cafe {{ext 42 !\x00}} {{ext 3 \xCA\xFE}}"
+
+tcltest::test fix_ext4 fix_ext4 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext4 42 !]
+    lappend enc [msgpack pack fix_ext4 3 \xCA\xFE]
+    lappend enc [msgpack pack fix_ext4 10 \x12\x34\x56\x78]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d62a21000000 d603cafe0000 d60a12345678\
+           {{ext 42 !\x00\x00\x00}} {{ext 3 \xCA\xFE\x00\x00}}\
+           {{ext 10 \x12\x34\x56\x78}}"
+
+tcltest::test fix_ext8 fix_ext8 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext8 3 \xCA\xFE]
+    lappend enc [msgpack pack fix_ext8 10 \x01\x23\x45\x67\x89\xAB\xCD\xEF]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d703cafe000000000000 d70a0123456789abcdef\
+           {{ext 3 \xCA\xFE\0\0\0\0\0\0}}\
+           {{ext 10 \x01\x23\x45\x67\x89\xAB\xCD\xEF}}"
+
+tcltest::test fix_ext16 fix_ext16 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext16 3 \xCA\xFE]
+    lappend enc [msgpack pack fix_ext16 11 [string repeat AB 16]]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d803cafe0000000000000000000000000000\
+           d80b41424142414241424142414241424142\
+           {{ext 3 \xCA\xFE\0\0\0\0\0\0\0\0\0\0\0\0\0\0}}\
+           {{ext 11 ABABABABABABABAB}}"
+
+
+tcltest::test ext ext -body {
+    set tt {}
+    foreach v [list \
+        {} a bb ccc dddd [string repeat e 255] [string repeat e 256] \
+        [string repeat f 257] [string repeat g 65535] [string repeat h 65536] \
+        [string repeat i 100000] \
+    ] {
+	lappend tt [binary encode hex [msgpack pack ext 127 $v]]
+    }
+    set tt
+} -result [list \
+    c7007f \
+    c7017f61 \
+    c7027f6262 \
+    c7037f636363 \
+    c7047f64646464 \
+    c7ff7f[string repeat 65 255] \
+    c801007f[string repeat 65 256] \
+    c801017f[string repeat 66 257] \
+    c8ffff7f[string repeat 67 65535] \
+    c9000100007f[string repeat 68 65536] \
+    c9000186a07f[string repeat 69 100000] \
+]
+
+
+tcltest::test ext-timestamp-1 Timestamp -body {
+    msgpack unpack [binary decode hex 81a56576656e7482a56c6162656caa74696d6520626567616ea464617465d6ff00000000]
+} -result {{map {{str event} {map {{str label} {str {time began}}\
+                                   {str date} {timestamp32 0}}}}}}
+
+tcltest::test ext-timestamp-2 Timestamp -body {
+    set tt {}
+    set enc [msgpack pack timestamp32 1598459831]
+    list [binary encode hex $enc] [msgpack unpack $enc]
+} -result {d6ff5f468fb7 {{timestamp32 1598459831}}}
+
+
+tcltest::test ext-unpacker-1 {Add custom unpacker} -setup {
+    set up [msgpack::unpacker new]
+} -cleanup {
+    catch { $up destroy }
+    rename ::xor {}
+} -body {
+    proc ::xor {n type data} {
+        if {$type != 100} { error [list wrong type: $type] }
+
+        set res {}
+        foreach b [split $data {}] {
+            set code [scan $b %c]
+            append res [format %c [expr { $code ^ $n }]]
+        }
+
+        return [list encrypted $res]
+    }
+
+    $up set_ext_unpacker 99 {::xor 42}
+    $up set_ext_unpacker 100 {::xor 5}
+    $up set_ext_unpacker 1000 {::xor 0}
+
+    $up unpack_string [msgpack pack ext 100 M`iij$]
+} -result {{encrypted Hello!}}
+
+tcltest::test ext-unpacker-2 {Remove timestamp unpacker} -setup {
+    set up [msgpack::unpacker new]
+} -cleanup {
+    catch { $up destroy }
+} -body {
+    $up set_ext_unpacker -1 {}
+    $up unpack_string [msgpack pack timestamp32 1598459831]
+} -result "{ext -1 \x5f\x46\x8f\xb7}"
 
 
 # Exit with a nonzero status if there are failed tests.
