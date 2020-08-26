@@ -261,6 +261,9 @@ oo::class create msgpack::packer {
                     $value % 1000000
                 }]]
             }
+            default {
+                error [list unknown type: $type]
+            }
         }
         return
     }

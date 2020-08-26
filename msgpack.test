@@ -528,6 +528,11 @@ tcltest::test ext-unpacker-2 {Remove timestamp unpacker} -setup {
 } -result "{ext -1 \x5f\x46\x8f\xb7}"
 
 
+tcltest::test pack-unknown-type unknown-type -body {
+    msgpack pack foo 99
+} -returnCodes error -result {unknown type: foo}
+
+
 # Exit with a nonzero status if there are failed tests.
 set failed [expr {$tcltest::numTests(Failed) > 0}]
 
