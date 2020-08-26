@@ -1,413 +1,333 @@
 lappend auto_path .
 
 package require tcltest
-package require cmsgpack ;# Critcl C wrapper
-package require msgpack ; # Tcl version
+package require msgpack
 
 ::tcltest::configure {*}$argv
 
-proc compare {tp tt {verbose 0}} {
-    set rt 0
-    # Compare packed
-    if {$tp eq $tt} {
-        incr rt
-    } else {
-    }
-    # Compare unpacked
-    set up1 [cmsgpack unpack $tp]
-    set ut1 [msgpack unpack $tt]
-    if {[string equal $up1 $ut1]} {
-        incr rt
-    }
-    # Compare unpacked, switch decode methods as cross check
-    set up2 [cmsgpack unpack $tt]
-    set ut2 [msgpack unpack $tp]
-    if {[string equal $up2 $ut2]} {
-        incr rt
-    }
-    # Output
-    if {$rt != 3 || $verbose} {
-        puts stderr "Pack [string equal $tp $tt] :"
-        puts -nonewline stderr "tp ="
-        for {set i 0} {$i < [string length $tp]} {incr i} {
-            set c [string index $tp $i]
-            binary scan $c c c
-            puts -nonewline stderr [format " %02x" [expr {$c&0xFF}]]
-        }
-        puts stderr ""
-        puts -nonewline stderr "tt ="
-        for {set i 0} {$i < [string length $tt]} {incr i} {
-            set c [string index $tt $i]
-            binary scan $c c c
-            puts -nonewline stderr [format " %02x" [expr {$c&0xFF}]]
-        }
-        puts stderr ""
-        puts stderr "Unpack (same lib) [string equal $up1 $ut1] :"
-        puts stderr "up = $up1"
-        puts stderr "ut = $ut1"
-        puts stderr "Unpack (switched lib) [string equal $up2 $ut2] :"
-        puts stderr "up = $up2"
-        puts stderr "ut = $ut2"
-    }
-    return $rt
-}
 
-proc test_map {n} {
-    set rt 0
-    set p [cmsgpack packer]
+proc test_map n {
     # Get keys and values
     set l {}
-    unset -nocomplain a
+
     for {set i 0} {$i < $n} {incr i} {
-        set m 0
-        while {1} {
-            incr m
-            set k [expr {int(10000000*rand())}]
-            if {![info exists a($k)]} {
-                break
-            }
-        }
-        set v [expr {int(100000*rand())}]
-        lappend l $k $v
-        set a($k) $v
+	set m 0
+	for {set j 0} {$j < 256} {incr j} {
+	    incr m
+	    set k [expr {int(sin($i + $j)*10000000)}]
+	    if {![info exists a($k)]} {
+		break
+	    }
+	}
+	set v [expr {int(sin($n)*100000)}]
+	lappend l $k $v
+	set a($k) $v
     }
+
     set l [lsort -stride 2 -index 0 -dictionary $l]
+
     # Test with map and loop over elements
     set tt [msgpack pack map $n]
     foreach {k v} $l {
-        append tt [msgpack pack int $k]
-        append tt [msgpack pack int $v]
-    }
-    $p pack map $n
-    foreach {k v} $l {
-        $p pack int $k
-        $p pack int $v
+	append tt [msgpack pack int $k]
+	append tt [msgpack pack int $v]
     }
     append tt [msgpack pack true]
-    $p pack true
+
     # Test dict
     set tt2 [msgpack pack dict int int $l]
     append tt2 [msgpack pack true]
+
     # Test tcl_array
     set tt3 [msgpack pack tcl_array int int a]
     append tt3 [msgpack pack true]
-    # Compare both with C version
-    set tp [$p data]
-    incr rt [compare [$p data] $tt]
-    incr rt [compare [$p data] $tt2]
-    incr rt [compare [$p data] $tt3]
-    # Cleanup
-    $p destroy
-    return $rt
+
+    return [list \
+        [string equal $tt $tt2] \
+        [string equal $tt $tt3] \
+        $tt \
+    ]
 }
 
-tcltest::test fix_int8 fix_int8 -setup {
-    set p [cmsgpack packer]
-} -body {
+
+tcltest::test fix_int8 fix_int8 -body {
     set tt [msgpack pack fix_int8 100]
     append tt [msgpack pack fix_int8 -100]
     append tt [msgpack pack fix_uint8 100]
-    $p pack fix_int8 100
-    $p pack fix_int8 -100
-    $p pack fix_uint8 100
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+} -result [binary decode hex d064d09ccc64]
 
-tcltest::test fix_int16 fix_int16 -setup {
-    set p [cmsgpack packer]
-} -body {
+tcltest::test fix_int16 fix_int16 -body {
     set tt [msgpack pack fix_int16 1000]
     append tt [msgpack pack fix_int16 -1000]
     append tt [msgpack pack fix_uint16 1000]
-    $p pack fix_int16 1000
-    $p pack fix_int16 -1000
-    $p pack fix_uint16 1000
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+} -result [binary decode hex d103e8d1fc18cd03e8]
 
-tcltest::test fix_int32 fix_int32 -setup {
-    set p [cmsgpack packer]
-} -body {
+tcltest::test fix_int32 fix_int32 -body {
     set tt [msgpack pack fix_int32 100000]
     append tt [msgpack pack fix_int32 -100000]
     append tt [msgpack pack fix_uint32 100000]
-    $p pack fix_int32 100000
-    $p pack fix_int32 -100000
-    $p pack fix_uint32 100000
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+} -result [binary decode hex d2000186a0d2fffe7960ce000186a0]
 
-tcltest::test fix_int64 fix_int64 -setup {
-    set p [cmsgpack packer]
-} -body {
+tcltest::test fix_int64 fix_int64 -body {
     set tt [msgpack pack fix_int64 1000000000000000]
     append tt [msgpack pack fix_int64 -1000000000000000]
     append tt [msgpack pack fix_uint64 1000000000000000]
-    $p pack fix_int64 1000000000000000
-    $p pack fix_int64 -1000000000000000
-    $p pack fix_uint64 1000000000000000
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+} -result [binary decode hex \
+    d300038d7ea4c68000d3fffc72815b398000cf00038d7ea4c68000 \
+]
 
-tcltest::test nil-true-false nil-true-false -setup {
-    set p [cmsgpack packer]
-} -body {
+
+tcltest::test nil-true-false nil-true-false -body {
     set tt [msgpack pack nil]
     append tt [msgpack pack true]
     append tt [msgpack pack false]
-    $p pack nil
-    $p pack true
-    $p pack false
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+} -result [binary decode hex c0c3c2]
 
-tcltest::test fixnum-pos-neg fixnum-pos-neg -setup {
-} -body {
+
+tcltest::test fixnum-pos-neg fixnum-pos-neg -body {
     set tt [msgpack pack fixnumpos 5]
     append tt [msgpack pack fixnumpos 50]
     append tt [msgpack pack fixnumneg -10]
     append tt [msgpack pack fixnumneg -32]
     msgpack unpack $tt
-} -cleanup {
-} -returnCodes {ok} -result {{integer 5} {integer 50} {integer -10} {integer -32}}
+} -result {{integer 5} {integer 50} {integer -10} {integer -32}}
 
-tcltest::test int8 int8 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
+
+tcltest::test int8 int8 -body {
+    set tt {}
     foreach v {127 128 1 0 -1 -32 -33 -127 -128} {
-        append tt [msgpack pack int8 $v]
-        $p pack int8 $v
+	lappend tt [msgpack pack int8 $v]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result "\x7f \xd0\x80 \x01 \x00 \xff \xe0 \xd0\xdf \xd0\x81 \xd0\x80"
 
-tcltest::test uint8 uint8 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
+tcltest::test uint8 uint8 -body {
+    set tt {}
     foreach v {127 128 1 0 -1 -32 -33 -127 -128} {
-        append tt [msgpack pack uint8 $v]
-        $p pack uint8 $v
+	lappend tt [msgpack pack uint8 $v]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result "\x7f \xcc\x80 \x01 \x00 \xcc\xff \xcc\xe0 \xcc\xdf \xcc\x81\
+           \xcc\x80"
 
-tcltest::test int16 int16 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000} {
-        append tt [msgpack pack int16 $v]
-        $p pack int16 $v
+tcltest::test int16 int16 -body {
+    set tt {}
+    foreach v {
+        1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000
+    } {
+	lappend tt [binary encode hex [msgpack pack int16 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {01 00 ff 20 21 e0 d0df 7f cc80 d081 d080 cd0100 cd0101 d1ff01\
+           d1ff00 cd2710 d1d8f0}
 
-tcltest::test uint16 uint16 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000} {
-        append tt [msgpack pack uint16 $v]
-        $p pack uint16 $v
+tcltest::test uint16 uint16 -body {
+    set tt {}
+    foreach v {
+        1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000
+    } {
+	lappend tt [binary encode hex [msgpack pack uint16 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {01 00 cdffff 20 21 cdffe0 cdffdf 7f cc80 cdff81 cdff80 cd0100\
+           cd0101 cdff01 cdff00 cd2710 cdd8f0}
 
-tcltest::test int32 int32 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768 -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000} {
-        append tt [msgpack pack int32 $v]
-        $p pack int32 $v
+tcltest::test int32 int32 -body {
+    set tt {}
+    foreach v {
+        1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
+        -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000
+    } {
+	lappend tt [binary encode hex [msgpack pack int32 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {01 00 ff 20 21 e0 d0df 7f cc80 d081 d080 cd0100 cd0101 d1ff01\
+           d1ff00 cd7fff cd8000 d18001 d18000 cdffff ce00010000 d2ffff0001\
+           d2ffff0000 ce00989680 d2ff676980}
 
-tcltest::test uint32 uint32 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768 -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000} {
-        append tt [msgpack pack uint32 $v]
-        $p pack uint32 $v
+tcltest::test uint32 uint32 -body {
+    set tt {}
+    foreach v {
+        1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
+        -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000
+    } {
+	lappend tt [binary encode hex [msgpack pack uint32 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {01 00 ceffffffff 20 21 ceffffffe0 ceffffffdf 7f cc80 ceffffff81\
+           ceffffff80 cd0100 cd0101 ceffffff01 ceffffff00 cd7fff cd8000\
+           ceffff8001 ceffff8000 cdffff ce00010000 ceffff0001 ceffff0000\
+           ce00989680 ceff676980}
 
-tcltest::test int64 int64 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768 -32767 -32768 65535 65536 -65535 -65536 2147483647 2147483648 -2147483647 -2147483648 4294967295 4294967296 -4294967295 -4294967296 1000000000000000 -1000000000000000} {
-        append tt [msgpack pack int64 $v]
-        $p pack int64 $v
+tcltest::test int64 int64 -body {
+    set tt {}
+    foreach v {
+        1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
+        -32767 -32768 65535 65536 -65535 -65536 2147483647 2147483648
+        -2147483647 -2147483648 4294967295 4294967296 -4294967295 -4294967296
+        1000000000000000 -1000000000000000
+    } {
+	lappend tt [binary encode hex [msgpack pack int64 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {01 00 ff 20 21 e0 d0df 7f cc80 d081 d080 cd0100 cd0101 d1ff01\
+           d1ff00 cd7fff cd8000 d18001 d18000 cdffff ce00010000 d2ffff0001\
+           d2ffff0000 ce7fffffff ce80000000 d280000001 d280000000 ceffffffff\
+           cf0000000100000000 d3ffffffff00000001 d3ffffffff00000000\
+           cf00038d7ea4c68000 d3fffc72815b398000}
 
-# can't test negative numbers here, Tcl API does not support unsigned numbers and as such can't return the right numbers.
-tcltest::test uint64 uint64 -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v {1 0 32 33 127 128 256 257 32767 32768 65535 65536 2147483647 2147483648 4294967295 4294967296 1000000000000000} {
-        append tt [msgpack pack uint64 $v]
-        $p pack uint64 $v
+tcltest::test uint64 uint64 -body {
+    set tt {}
+    foreach v {
+        1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
+        -32767 -32768 65535 65536 -65535 -65536 2147483647 2147483648
+        -2147483647 -2147483648 4294967295 4294967296 -4294967295 -4294967296
+        1000000000000000 -1000000000000000
+    } {
+	lappend tt [binary encode hex [msgpack pack uint64 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {01 00 cfffffffffffffffff 20 21 cfffffffffffffffe0\
+           cfffffffffffffffdf 7f cc80 cfffffffffffffff81 cfffffffffffffff80\
+           cd0100 cd0101 cfffffffffffffff01 cfffffffffffffff00 cd7fff cd8000\
+           cfffffffffffff8001 cfffffffffffff8000 cdffff ce00010000\
+           cfffffffffffff0001 cfffffffffffff0000 ce7fffffff ce80000000\
+           cfffffffff80000001 cfffffffff80000000 ceffffffff cf0000000100000000\
+           cfffffffff00000001 cfffffffff00000000 cf00038d7ea4c68000\
+           cffffc72815b398000}
 
-tcltest::test float-real float-real -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v {1 2 3.1415 123456678 6.54E3} {
-        append tt [msgpack pack float $v]
-        $p pack float $v
-        append tt [msgpack pack double $v]
-        $p pack double $v
+
+tcltest::test float float -body {
+    set tt {}
+    foreach v {1 2 3.1415 123456678 6.54e3} {
+        lappend tt [binary encode hex [msgpack pack float32 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {ca3f800000 ca40000000 ca40490e56 ca4ceb7995 ca45cc6000}
 
-tcltest::test raw raw -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    foreach v [list "" a bb ccc dddd [string repeat e 31] [string repeat e 32] [string repeat f 33] [string repeat g 65535] [string repeat h 65536] [string repeat i 100000]] {
-        append tt [msgpack pack raw [string length $v]]
-        append tt [msgpack pack raw_body $v]
-        append tt [msgpack pack string $v]
-        $p pack raw [string length $v]
-        $p pack raw_body $v
-        $p pack string $v
+tcltest::test double double -body {
+    set tt {}
+    foreach v {1 2 3.1415 123456678 6.54e3} {
+	lappend tt [binary encode hex [msgpack pack float64 $v]]
     }
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    set tt
+} -result {cb3ff0000000000000 cb4000000000000000 cb400921cac083126f\
+           cb419d6f3298000000 cb40b98c0000000000}
 
-tcltest::test array-list array-list -setup {
-    set p [cmsgpack packer]
-} -body {
-    set rt 0
-    foreach n {10} {
-        # Test array + loop over elements
-        set tt ""
-        append tt [msgpack pack array $n]
-        $p pack array $n
-        set l {}
-        for {set i 0} {$i < $n} {incr i} {
-            set v [expr {int(100000*rand())}]
-            lappend l $v
-            append tt [msgpack pack int $v]
-            $p pack int $v
-        }
-        append tt [msgpack pack true]
-        $p pack true
-        # Test list
-        set tt2 [msgpack pack list int $l]
-        append tt2 [msgpack pack true]
-        # Compare both with C version
-        set tp [$p data]
-        incr rt [compare [$p data] $tt]
-        incr rt [compare [$p data] $tt2]
+
+# One can't use -match regexp here because it is limited to 255 repetitions.
+# We weep for your terminal if this test fails.
+tcltest::test bin bin -body {
+    set tt {}
+    foreach v [list \
+        {} a bb ccc dddd [string repeat e 31] [string repeat e 32] \
+        [string repeat f 33] [string repeat g 65535] [string repeat h 65536] \
+        [string repeat i 100000] \
+    ] {
+	lappend tt [binary encode hex [msgpack pack bin $v]]
     }
-    set rt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {6}
+    set tt
+} -result [list \
+    c400 \
+    c40161 \
+    c4026262 \
+    c403636363 \
+    c40464646464 \
+    c41f[string repeat 65 31] \
+    c420[string repeat 65 32] \
+    c421[string repeat 66 33] \
+    c5ffff[string repeat 67 65535] \
+    c600010000[string repeat 68 65536] \
+    c6000186a0[string repeat 69 100000] \
+]
 
-tcltest::test map-dict-tcl_array-10-31-32 map-dict-tcl_array-10-31-32 -setup {
-} -body {
-    set rt 0
+tcltest::test str str -body {
+    set tt {}
+    foreach v [list \
+        {} a bb ccc dddd [string repeat e 31] [string repeat e 32] \
+        [string repeat f 33] [string repeat g 65535] [string repeat h 65536] \
+        [string repeat i 100000] \
+    ] {
+	lappend tt [binary encode hex [msgpack pack str $v]]
+    }
+    set tt
+} -result [list \
+    a0 \
+    a161 \
+    a26262 \
+    a3636363 \
+    a464646464 \
+    bf[string repeat 65 31] \
+    d920[string repeat 65 32] \
+    d921[string repeat 66 33] \
+    daffff[string repeat 67 65535] \
+    db00010000[string repeat 68 65536] \
+    db000186a0[string repeat 69 100000] \
+]
+
+
+tcltest::test array-list array-list -body {
+    set n 10
+    set tt {}
+
+    append tt [msgpack pack array $n]
+
+    set l {}
+    for {set i 0} {$i < $n} {incr i} {
+        set v [expr {int(exp($i + $n)) % 100000}]
+        lappend l $v
+        append tt [msgpack pack int $v]
+    }
+    append tt [msgpack pack true]
+
+    # Test list
+    set tt2 [msgpack pack list int $l]
+    append tt2 [msgpack pack true]
+
+    list [string equal $tt $tt2] [binary encode hex $tt]
+} -result {1 9acd560acde9e2cdf522cda5adcd0a2cce00010d99ce0001505ecdd6a8cdea41ce0001417cc3}
+
+
+tcltest::test map-dict-tcl_array-10-31-32 map-dict-tcl_array-10-31-32 -body {
+    set res {}
     foreach n {10 31 32} {
-        incr rt [test_map $n]
+	lassign [test_map $n] eq1 eq2 tt
+        lappend res $eq1 $eq2 [binary encode hex $tt]
     }
-    set rt
-} -cleanup {
-} -returnCodes {ok} -result {27}
+    set res
+} -result [list \
+    1 1 8ad2ffd55d56d2ffff2b7ed2ff8c8568d2ffff2b7ed2ff6dae06d2ffff2b7e00d2ffff2b7ece00158880d2ffff2b7ece003ee260d2ffff2b7ece00643f89d2ffff2b7ece008065f5d2ffff2b7ece008abf6ed2ffff2b7ece0096f6ced2ffff2b7ec3 \
+    1 1 de001fd2fffea63fd2ffff622dd2ffebce03d2ffff622dd2ffd55d56d2ffff622dd2ffd411c7d2ffff622dd2ffae201fd2ffff622dd2ffacfd2dd2ffff622dd2ff9abcced2ffff622dd2ff8d6890d2ffff622dd2ff8c8568d2ffff622dd2ff7ee084d2ffff622dd2ff75d1d9d2ffff622dd2ff6dae06d2ffff622dd2ff6d4d6ad2ffff622dd2ff693d04d2ffff622dd2ff6769e2d2ffff622d00d2ffff622dce00158880d2ffff622dce0016de94d2ffff622dce00295641d2ffff622dce003ee260d2ffff622dce00401cc6d2ffff622dce006339ded2ffff622dce00643f89d2ffff622dce00745b70d2ffff622dce007fa9dcd2ffff622dce008065f5d2ffff622dce008abf6ed2ffff622dce008b4decd2ffff622dce0091ee6fd2ffff622dce0096f6ced2ffff622dce00972799d2ffff622dc3 \
+    1 1 de0020d2fffea63fcdd766d2ffebce03cdd766d2ffd55d56cdd766d2ffd411c7cdd766d2ffc25948cdd766d2ffae201fcdd766d2ffacfd2dcdd766d2ff9abccecdd766d2ff8d6890cdd766d2ff8c8568cdd766d2ff7ee084cdd766d2ff75d1d9cdd766d2ff6dae06cdd766d2ff6d4d6acdd766d2ff693d04cdd766d2ff6769e2cdd76600cdd766ce00158880cdd766ce0016de94cdd766ce00295641cdd766ce003ee260cdd766ce00401cc6cdd766ce006339decdd766ce00643f89cdd766ce00745b70cdd766ce007fa9dccdd766ce008065f5cdd766ce008abf6ecdd766ce008b4deccdd766ce0091ee6fcdd766ce0096f6cecdd766ce00972799cdd766c3 \
+]
 
-tcltest::test map-dict-tcl_array-65535 map-dict-tcl_array-65535 -setup {
-} -body {
-    test_map 65535
-} -cleanup {
-} -returnCodes {ok} -result {9}
+tcltest::test map-dict-tcl_array-65535 map-dict-tcl_array-65535 -body {
+    lrange [test_map 65535] 0 1
+} -result {1 1} -constraints slowTests
 
-tcltest::test map-dict-tcl_array-65536 map-dict-tcl_array-65536 -setup {
-} -body {
-    test_map 65536
-} -cleanup {
-} -returnCodes {ok} -result {9}
+tcltest::test map-dict-tcl_array-65536 map-dict-tcl_array-65536} -body {
+    lrange [test_map 65536] 0 1
+} -result {1 1} -constraints slowTests
 
-tcltest::test nested nested -setup {
-    set p [cmsgpack packer]
-} -body {
-    set tt ""
-    append tt [msgpack pack array 3]
-    $p pack array 3
+
+tcltest::test nested nested -body {
+    set tt {}
+    append tt [msgpack pack array 6]
     append tt [msgpack pack int 5]
-    append tt [msgpack pack string vijf]
+    append tt [msgpack pack str vijf]
     append tt [msgpack pack int 6]
-    append tt [msgpack pack dict int string {1 twee 3 vier}]
+    append tt [msgpack pack dict int str {1 twee 3 vier}]
     append tt [msgpack pack int 7]
-    append tt [msgpack pack string zeven]
-    $p pack int 5
-    $p pack string vijf
-    $p pack int 6
-    $p pack dict int string {1 twee 3 vier}
-    $p pack int 7
-    $p pack string zeven
-    # Compare both with C version
-    set tp [$p data]
-    compare [$p data] $tt
-} -cleanup {
-    $p destroy
-} -returnCodes {ok} -result {3}
+    append tt [msgpack pack str zeven]
 
-# cleanup
-::tcltest::cleanupTests
-return
+    msgpack unpack $tt
+} -result {{array {{integer 5} {str vijf} {integer 6}\
+            {map {{integer 1} {str twee} {integer 3} {str vier}}}\
+            {integer 7} {str zeven}}}}
+
+
+# Exit with a nonzero status if there are failed tests.
+set failed [expr {$tcltest::numTests(Failed) > 0}]
+
+tcltest::cleanupTests
+if {$failed} { exit 1 }
