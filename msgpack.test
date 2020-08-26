@@ -10,44 +10,44 @@ proc compare {tp tt {verbose 0}} {
     set rt 0
     # Compare packed
     if {$tp eq $tt} {
-	incr rt
+        incr rt
     } else {
     }
     # Compare unpacked
     set up1 [cmsgpack unpack $tp]
     set ut1 [msgpack unpack $tt]
     if {[string equal $up1 $ut1]} {
-	incr rt
+        incr rt
     }
     # Compare unpacked, switch decode methods as cross check
     set up2 [cmsgpack unpack $tt]
     set ut2 [msgpack unpack $tp]
     if {[string equal $up2 $ut2]} {
-	incr rt
+        incr rt
     }
     # Output
     if {$rt != 3 || $verbose} {
-	puts stderr "Pack [string equal $tp $tt] :"
-	puts -nonewline stderr "tp ="
-	for {set i 0} {$i < [string length $tp]} {incr i} {
-	    set c [string index $tp $i]
-	    binary scan $c c c
-	    puts -nonewline stderr [format " %02x" [expr {$c&0xFF}]]
-	}
-	puts stderr ""
-	puts -nonewline stderr "tt ="
-	for {set i 0} {$i < [string length $tt]} {incr i} {
-	    set c [string index $tt $i]
-	    binary scan $c c c
-	    puts -nonewline stderr [format " %02x" [expr {$c&0xFF}]]
-	}
-	puts stderr ""
-	puts stderr "Unpack (same lib) [string equal $up1 $ut1] :"
-	puts stderr "up = $up1"
-	puts stderr "ut = $ut1"
-	puts stderr "Unpack (switched lib) [string equal $up2 $ut2] :"
-	puts stderr "up = $up2"
-	puts stderr "ut = $ut2"
+        puts stderr "Pack [string equal $tp $tt] :"
+        puts -nonewline stderr "tp ="
+        for {set i 0} {$i < [string length $tp]} {incr i} {
+            set c [string index $tp $i]
+            binary scan $c c c
+            puts -nonewline stderr [format " %02x" [expr {$c&0xFF}]]
+        }
+        puts stderr ""
+        puts -nonewline stderr "tt ="
+        for {set i 0} {$i < [string length $tt]} {incr i} {
+            set c [string index $tt $i]
+            binary scan $c c c
+            puts -nonewline stderr [format " %02x" [expr {$c&0xFF}]]
+        }
+        puts stderr ""
+        puts stderr "Unpack (same lib) [string equal $up1 $ut1] :"
+        puts stderr "up = $up1"
+        puts stderr "ut = $ut1"
+        puts stderr "Unpack (switched lib) [string equal $up2 $ut2] :"
+        puts stderr "up = $up2"
+        puts stderr "ut = $ut2"
     }
     return $rt
 }
@@ -59,29 +59,29 @@ proc test_map {n} {
     set l {}
     unset -nocomplain a
     for {set i 0} {$i < $n} {incr i} {
-	set m 0
-	while {1} {
-	    incr m
-	    set k [expr {int(10000000*rand())}]
-	    if {![info exists a($k)]} {
-		break
-	    }
-	}
-	set v [expr {int(100000*rand())}]
-	lappend l $k $v
-	set a($k) $v
+        set m 0
+        while {1} {
+            incr m
+            set k [expr {int(10000000*rand())}]
+            if {![info exists a($k)]} {
+                break
+            }
+        }
+        set v [expr {int(100000*rand())}]
+        lappend l $k $v
+        set a($k) $v
     }
     set l [lsort -stride 2 -index 0 -dictionary $l]
     # Test with map and loop over elements
     set tt [msgpack pack map $n]
     foreach {k v} $l {
-	append tt [msgpack pack int $k]
-	append tt [msgpack pack int $v]
+        append tt [msgpack pack int $k]
+        append tt [msgpack pack int $v]
     }
     $p pack map $n
     foreach {k v} $l {
-	$p pack int $k
-	$p pack int $v
+        $p pack int $k
+        $p pack int $v
     }
     append tt [msgpack pack true]
     $p pack true
@@ -188,8 +188,8 @@ tcltest::test int8 int8 -setup {
 } -body {
     set tt ""
     foreach v {127 128 1 0 -1 -32 -33 -127 -128} {
-	append tt [msgpack pack int8 $v]
-	$p pack int8 $v
+        append tt [msgpack pack int8 $v]
+        $p pack int8 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -202,8 +202,8 @@ tcltest::test uint8 uint8 -setup {
 } -body {
     set tt ""
     foreach v {127 128 1 0 -1 -32 -33 -127 -128} {
-	append tt [msgpack pack uint8 $v]
-	$p pack uint8 $v
+        append tt [msgpack pack uint8 $v]
+        $p pack uint8 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -216,8 +216,8 @@ tcltest::test int16 int16 -setup {
 } -body {
     set tt ""
     foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000} {
-	append tt [msgpack pack int16 $v]
-	$p pack int16 $v
+        append tt [msgpack pack int16 $v]
+        $p pack int16 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -230,8 +230,8 @@ tcltest::test uint16 uint16 -setup {
 } -body {
     set tt ""
     foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000} {
-	append tt [msgpack pack uint16 $v]
-	$p pack uint16 $v
+        append tt [msgpack pack uint16 $v]
+        $p pack uint16 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -244,8 +244,8 @@ tcltest::test int32 int32 -setup {
 } -body {
     set tt ""
     foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768 -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000} {
-	append tt [msgpack pack int32 $v]
-	$p pack int32 $v
+        append tt [msgpack pack int32 $v]
+        $p pack int32 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -258,8 +258,8 @@ tcltest::test uint32 uint32 -setup {
 } -body {
     set tt ""
     foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768 -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000} {
-	append tt [msgpack pack uint32 $v]
-	$p pack uint32 $v
+        append tt [msgpack pack uint32 $v]
+        $p pack uint32 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -272,8 +272,8 @@ tcltest::test int64 int64 -setup {
 } -body {
     set tt ""
     foreach v {1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768 -32767 -32768 65535 65536 -65535 -65536 2147483647 2147483648 -2147483647 -2147483648 4294967295 4294967296 -4294967295 -4294967296 1000000000000000 -1000000000000000} {
-	append tt [msgpack pack int64 $v]
-	$p pack int64 $v
+        append tt [msgpack pack int64 $v]
+        $p pack int64 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -287,8 +287,8 @@ tcltest::test uint64 uint64 -setup {
 } -body {
     set tt ""
     foreach v {1 0 32 33 127 128 256 257 32767 32768 65535 65536 2147483647 2147483648 4294967295 4294967296 1000000000000000} {
-	append tt [msgpack pack uint64 $v]
-	$p pack uint64 $v
+        append tt [msgpack pack uint64 $v]
+        $p pack uint64 $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -301,10 +301,10 @@ tcltest::test float-real float-real -setup {
 } -body {
     set tt ""
     foreach v {1 2 3.1415 123456678 6.54E3} {
-	append tt [msgpack pack float $v]
-	$p pack float $v
-	append tt [msgpack pack double $v]
-	$p pack double $v
+        append tt [msgpack pack float $v]
+        $p pack float $v
+        append tt [msgpack pack double $v]
+        $p pack double $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -317,12 +317,12 @@ tcltest::test raw raw -setup {
 } -body {
     set tt ""
     foreach v [list "" a bb ccc dddd [string repeat e 31] [string repeat e 32] [string repeat f 33] [string repeat g 65535] [string repeat h 65536] [string repeat i 100000]] {
-	append tt [msgpack pack raw [string length $v]]
-	append tt [msgpack pack raw_body $v]
-	append tt [msgpack pack string $v]
-	$p pack raw [string length $v]
-	$p pack raw_body $v
-	$p pack string $v
+        append tt [msgpack pack raw [string length $v]]
+        append tt [msgpack pack raw_body $v]
+        append tt [msgpack pack string $v]
+        $p pack raw [string length $v]
+        $p pack raw_body $v
+        $p pack string $v
     }
     set tp [$p data]
     compare [$p data] $tt
@@ -335,26 +335,26 @@ tcltest::test array-list array-list -setup {
 } -body {
     set rt 0
     foreach n {10} {
-	# Test array + loop over elements
-	set tt ""
-	append tt [msgpack pack array $n]
-	$p pack array $n
-	set l {}
-	for {set i 0} {$i < $n} {incr i} {
-	    set v [expr {int(100000*rand())}]
-	    lappend l $v
-	    append tt [msgpack pack int $v]
-	    $p pack int $v
-	}
-	append tt [msgpack pack true]
-	$p pack true
-	# Test list
-	set tt2 [msgpack pack list int $l]
-	append tt2 [msgpack pack true]
-	# Compare both with C version
-	set tp [$p data]
-	incr rt [compare [$p data] $tt]
-	incr rt [compare [$p data] $tt2]
+        # Test array + loop over elements
+        set tt ""
+        append tt [msgpack pack array $n]
+        $p pack array $n
+        set l {}
+        for {set i 0} {$i < $n} {incr i} {
+            set v [expr {int(100000*rand())}]
+            lappend l $v
+            append tt [msgpack pack int $v]
+            $p pack int $v
+        }
+        append tt [msgpack pack true]
+        $p pack true
+        # Test list
+        set tt2 [msgpack pack list int $l]
+        append tt2 [msgpack pack true]
+        # Compare both with C version
+        set tp [$p data]
+        incr rt [compare [$p data] $tt]
+        incr rt [compare [$p data] $tt2]
     }
     set rt
 } -cleanup {
@@ -365,7 +365,7 @@ tcltest::test map-dict-tcl_array-10-31-32 map-dict-tcl_array-10-31-32 -setup {
 } -body {
     set rt 0
     foreach n {10 31 32} {
-	incr rt [test_map $n]
+        incr rt [test_map $n]
     }
     set rt
 } -cleanup {
