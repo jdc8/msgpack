@@ -418,7 +418,7 @@ oo::class create msgpack::unpacker {
                 set n [expr {$tc & 0x1F}]
                 my $need_proc $n
                 binary scan $data a$n c
-                lappend l [list str $c]
+                lappend l [list str [encoding convertfrom utf-8 $c]]
                 set data [string range $data $n end]
             } else {
                 if {$tc == 0xC0} {
@@ -588,7 +588,7 @@ oo::class create msgpack::unpacker {
                     set data [string range $data 1 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [list str $c]
+                    lappend l [list str [encoding convertfrom utf-8 $c]]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xDA} {
                     # string 16
@@ -598,7 +598,7 @@ oo::class create msgpack::unpacker {
                     set data [string range $data 2 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [list str $c]
+                    lappend l [list str [encoding convertfrom utf-8 $c]]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xDB} {
                     # string 32
@@ -608,7 +608,7 @@ oo::class create msgpack::unpacker {
                     set data [string range $data 4 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [list str $c]
+                    lappend l [list str [encoding convertfrom utf-8 $c]]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xDC} {
                     # array 16
