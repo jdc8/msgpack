@@ -479,7 +479,7 @@ oo::class create msgpack::unpacker {
                     set data [string range $data 3 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [my unpack_ext $exp_type $c]
+                    lappend l [my unpack_ext $ext_type $c]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xC9} {
                     # ext 32
