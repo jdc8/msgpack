@@ -202,6 +202,7 @@ oo::class create msgpack::packer {
                 }
             }
             str {
+                set value [encoding convertto utf-8 $value]
                 set n [string length $value]
                 if {$n < 32} {
                     append data [binary format ca* [expr {0xA0 | $n}] $value]

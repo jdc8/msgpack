@@ -547,13 +547,17 @@ tcltest::test unpack-not-long-enough-str unpack-not-long-enough -body {
                               need 5 byte(s), only 1 left}
 
 
-proc mts_test {filename key {lrange {1 1}}} {
+proc mts_test_file filename {
     set ch [open [file join $::mtsPath $filename] r]
     chan configure $ch -encoding utf-8
     set yaml [read $ch]
     close $ch
 
-    set tests [yaml::yaml2dict $yaml]
+    return $yaml
+}
+
+proc mts_test {filename key} {
+    set tests [yaml::yaml2dict [mts_test_file $filename]]
 
     flatmap test $tests {
         set ref [dict get $test $key]
@@ -602,14 +606,30 @@ tcltest::test msgpack-test-suite-string {} -body {
 } -result {} -constraints yaml
 
 tcltest::test msgpack-test-suite-timestamp {} -body {
-    set filename 50.timestamp.yaml
+    set filename 
 
-    foreach {ref values} [mts_test $filename timestamp {0 1}] {
+    foreach {ref values} [mts_test 50.timestamp.yaml timestamp] {
         foreach value $values {
             set t [lrange $value 1 2]
             if {$t ne $ref} {
                 error [list unpacked timestamp $t ne $ref in $filename]
             }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-pack-utf8 {} -body {
+    set tests [yaml::yaml2dict [mts_test_file 31.string-utf8.yaml]]
+
+    flatmap test $tests {
+        set ref [dict get $test string]
+        set hex [flatmap x [dict get $test msgpack] {
+            string map {- {}} $x
+        }]
+        set hexPacked [binary encode hex [msgpack pack str $ref]]
+
+        if {$hexPacked ni $hex} {
+            error [list packed $ref eq $hexPacked not in list $hex]
         }
     }
 } -result {} -constraints yaml
