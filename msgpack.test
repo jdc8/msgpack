@@ -546,6 +546,9 @@ tcltest::test unpack-not-long-enough-str unpack-not-long-enough -body {
 } -returnCodes error -result {input string not long enough,\
                               need 5 byte(s), only 1 left}
 
+proc mts_unhex hex {
+    binary decode hex [string map {- {}} $hex]
+}
 
 proc mts_test_file filename {
     set ch [open [file join $::mtsPath $filename] r]
@@ -556,13 +559,18 @@ proc mts_test_file filename {
     return $yaml
 }
 
-proc mts_test {filename key} {
+proc mts_test {filename {key %AUTO%}} {
     set tests [yaml::yaml2dict [mts_test_file $filename]]
 
     flatmap test $tests {
-        set ref [dict get $test $key]
+        set ref [dict get $test [if {$key eq {%AUTO%}} {
+            lsearch -inline -not [dict keys $test] msgpack
+        } else {
+            lindex $key
+        }]]
+
         set unpacked [flatmap x [dict get $test msgpack] {
-            set packed [binary decode hex [string map {- {}} $x]]
+            set packed [mts_unhex $x]
             msgpack unpack $packed
         }]
 
@@ -570,14 +578,68 @@ proc mts_test {filename key} {
     }
 }
 
+tcltest::test msgpack-test-suite-array {} -body {
+    set filename 40.array.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        foreach value $values {
+            set a [lmap x [lindex $value 1] { lindex $x 1 }]
+            if {$a ne $ref} {
+                error [list unpacked array $a ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-binary {} -body {
+    set filename 12.binary.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        set ref [mts_unhex $ref]
+        foreach value $values {
+            set b [lindex $value 1]
+            if {$b ne $ref} {
+                error [list unpacked binary $b ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-ext {} -body {
+    set filename 60.ext.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        lset ref 1 [mts_unhex [lindex $ref 1]]
+        foreach value $values {
+            set e [lrange $value 1 end]
+            if {$e ne $ref} {
+                error [list unpacked binary $e ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-nested {} -body {
+    set filename 42.nested.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        foreach value $values {
+            set m [lmap x [lindex $value 1] { lindex $x 1 }]
+            if {$m ne $ref} {
+                error [list unpacked array $m ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
 tcltest::test msgpack-test-suite-number {} -body {
-    foreach {key filename} {
-        number 20.number-positive.yaml
-        number 21.number-negative.yaml
-        number 22.number-float.yaml
-        bignum 23.number-bignum.yaml
+    foreach filename {
+        20.number-positive.yaml
+        21.number-negative.yaml
+        22.number-float.yaml
+        23.number-bignum.yaml
     } {
-        foreach {ref values} [mts_test $filename $key] {
+        foreach {ref values} [mts_test $filename] {
             foreach value $values {
                 set n [lindex $value 1]
                 if {$n != $ref} {
@@ -594,7 +656,7 @@ tcltest::test msgpack-test-suite-string {} -body {
         31.string-utf8.yaml
         32.string-emoji.yaml
     } {
-        foreach {ref values} [mts_test $filename string] {
+        foreach {ref values} [mts_test $filename] {
             foreach value $values {
                 set s [lindex $value 1]
                 if {$s ne $ref} {
@@ -606,9 +668,9 @@ tcltest::test msgpack-test-suite-string {} -body {
 } -result {} -constraints yaml
 
 tcltest::test msgpack-test-suite-timestamp {} -body {
-    set filename 
+    set filename 50.timestamp.yaml
 
-    foreach {ref values} [mts_test 50.timestamp.yaml timestamp] {
+    foreach {ref values} [mts_test $filename] {
         foreach value $values {
             set t [lrange $value 1 2]
             if {$t ne $ref} {
