@@ -6,6 +6,16 @@ package require msgpack
 ::tcltest::configure {*}$argv
 
 
+try {
+    package require yaml
+    set mtsPath [file join [file dirname [info script]] \
+                           vendor \
+                           msgpack-test-suite]
+} on ok _ {
+    tcltest::testConstraint yaml true
+}
+
+
 proc flatmap args {
     concat {*}[uplevel 1 lmap $args]
 }
@@ -535,6 +545,74 @@ tcltest::test unpack-not-long-enough-str unpack-not-long-enough -body {
     msgpack unpack \xD9\x05\xFF
 } -returnCodes error -result {input string not long enough,\
                               need 5 byte(s), only 1 left}
+
+
+proc mts_test {filename key {lrange {1 1}}} {
+    set ch [open [file join $::mtsPath $filename] r]
+    chan configure $ch -encoding utf-8
+    set yaml [read $ch]
+    close $ch
+
+    set tests [yaml::yaml2dict $yaml]
+
+    flatmap test $tests {
+        set ref [dict get $test $key]
+        set unpacked [flatmap x [dict get $test msgpack] {
+            set packed [binary decode hex [string map {- {}} $x]]
+            msgpack unpack $packed
+        }]
+
+        list $ref $unpacked
+    }
+}
+
+tcltest::test msgpack-test-suite-number {} -body {
+    foreach {key filename} {
+        number 20.number-positive.yaml
+        number 21.number-negative.yaml
+        number 22.number-float.yaml
+        bignum 23.number-bignum.yaml
+    } {
+        foreach {ref values} [mts_test $filename $key] {
+            foreach value $values {
+                set n [lindex $value 1]
+                if {$n != $ref} {
+                    error [list unpacked number $n != $ref in $filename]
+                }
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-string {} -body {
+    foreach filename {
+        30.string-ascii.yaml
+        31.string-utf8.yaml
+        32.string-emoji.yaml
+    } {
+        foreach {ref values} [mts_test $filename string] {
+            foreach value $values {
+                set s [lindex $value 1]
+                if {$s ne $ref} {
+                    error [list unpacked string $s ne $ref in $filename]
+                }
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-timestamp {} -body {
+    set filename 50.timestamp.yaml
+
+    foreach {ref values} [mts_test $filename timestamp {0 1}] {
+        foreach value $values {
+            set t [lrange $value 1 2]
+            if {$t ne $ref} {
+                error [list unpacked timestamp $t ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
 
 
 # Exit with a nonzero status if there are failed tests.
