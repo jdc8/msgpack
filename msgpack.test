@@ -489,8 +489,10 @@ tcltest::test ext-timestamp-5 {milliseconds and microseconds} -body {
         lappend tt [binary encode hex $x] [msgpack unpack $x]
     }
     set tt
-} -result {c70cff00000300000000005f469d4c {{timestamp 1598463308 768}}\
-           c70cff0009cda4000000005f469d44 {{timestamp 1598463300 642468}}}
+} -result {c70cff2dc6c000000000005f469d4c\
+           {{timestamp 1598463308 768000000}}\
+           c70cff264b48a0000000005f469d44\
+           {{timestamp 1598463300 642468000}}}
 
 
 tcltest::test ext-unpacker-1 {Add custom unpacker} -setup {

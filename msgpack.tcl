@@ -251,14 +251,14 @@ oo::class create msgpack::packer {
                 append data [my pack timestamp96 [expr {
                     round($value / 1000)
                 }] [expr {
-                    $value % 1000
+                    $value % 1000 * 1000000
                 }]]
             }
             microseconds {
                 append data [my pack timestamp96 [expr {
                     round($value / 1000000)
                 }] [expr {
-                    $value % 1000000
+                    $value % 1000000 * 1000
                 }]]
             }
             default {
