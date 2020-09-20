@@ -6,22 +6,36 @@ package require msgpack
 ::tcltest::configure {*}$argv
 
 
+try {
+    package require yaml
+    set mtsPath [file join [file dirname [info script]] \
+                           vendor \
+                           msgpack-test-suite]
+} on ok _ {
+    tcltest::testConstraint yaml true
+}
+
+
+proc flatmap args {
+    concat {*}[uplevel 1 lmap $args]
+}
+
 proc test_map n {
     # Get keys and values
     set l {}
 
     for {set i 0} {$i < $n} {incr i} {
-	set m 0
-	for {set j 0} {$j < 256} {incr j} {
-	    incr m
-	    set k [expr {int(sin($i + $j)*10000000)}]
-	    if {![info exists a($k)]} {
-		break
-	    }
-	}
-	set v [expr {int(sin($n)*100000)}]
-	lappend l $k $v
-	set a($k) $v
+        set m 0
+        for {set j 0} {$j < 256} {incr j} {
+            incr m
+            set k [expr {int(sin($i + $j)*10000000)}]
+            if {![info exists a($k)]} {
+                break
+            }
+        }
+        set v [expr {int(sin($n)*100000)}]
+        lappend l $k $v
+        set a($k) $v
     }
 
     set l [lsort -stride 2 -index 0 -dictionary $l]
@@ -29,8 +43,8 @@ proc test_map n {
     # Test with map and loop over elements
     set tt [msgpack pack map $n]
     foreach {k v} $l {
-	append tt [msgpack pack int $k]
-	append tt [msgpack pack int $v]
+        append tt [msgpack pack int $k]
+        append tt [msgpack pack int $v]
     }
     append tt [msgpack pack true]
 
@@ -94,82 +108,68 @@ tcltest::test fixnum-pos-neg fixnum-pos-neg -body {
 
 
 tcltest::test int8 int8 -body {
-    set tt {}
-    foreach v {127 128 1 0 -1 -32 -33 -127 -128} {
-	lappend tt [msgpack pack int8 $v]
+    flatmap v {127 128 1 0 -1 -32 -33 -127 -128} {
+            msgpack pack int8 $v
     }
-    set tt
 } -result "\x7f \xd0\x80 \x01 \x00 \xff \xe0 \xd0\xdf \xd0\x81 \xd0\x80"
 
 tcltest::test uint8 uint8 -body {
-    set tt {}
-    foreach v {127 128 1 0 -1 -32 -33 -127 -128} {
-	lappend tt [msgpack pack uint8 $v]
+    flatmap v {127 128 1 0 -1 -32 -33 -127 -128} {
+            msgpack pack uint8 $v
     }
-    set tt
 } -result "\x7f \xcc\x80 \x01 \x00 \xcc\xff \xcc\xe0 \xcc\xdf \xcc\x81\
            \xcc\x80"
 
 tcltest::test int16 int16 -body {
-    set tt {}
-    foreach v {
+    flatmap v {
         1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000
     } {
-	lappend tt [binary encode hex [msgpack pack int16 $v]]
+            binary encode hex [msgpack pack int16 $v]
     }
-    set tt
 } -result {01 00 ff 20 21 e0 d0df 7f cc80 d081 d080 cd0100 cd0101 d1ff01\
            d1ff00 cd2710 d1d8f0}
 
 tcltest::test uint16 uint16 -body {
-    set tt {}
-    foreach v {
+    flatmap v {
         1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 10000 -10000
     } {
-	lappend tt [binary encode hex [msgpack pack uint16 $v]]
+            binary encode hex [msgpack pack uint16 $v]
     }
-    set tt
 } -result {01 00 cdffff 20 21 cdffe0 cdffdf 7f cc80 cdff81 cdff80 cd0100\
            cd0101 cdff01 cdff00 cd2710 cdd8f0}
 
 tcltest::test int32 int32 -body {
-    set tt {}
-    foreach v {
+    flatmap v {
         1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
         -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000
     } {
-	lappend tt [binary encode hex [msgpack pack int32 $v]]
+            binary encode hex [msgpack pack int32 $v]
     }
-    set tt
 } -result {01 00 ff 20 21 e0 d0df 7f cc80 d081 d080 cd0100 cd0101 d1ff01\
            d1ff00 cd7fff cd8000 d18001 d18000 cdffff ce00010000 d2ffff0001\
            d2ffff0000 ce00989680 d2ff676980}
 
 tcltest::test uint32 uint32 -body {
-    set tt {}
-    foreach v {
+    flatmap v {
         1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
         -32767 -32768 65535 65536 -65535 -65536 10000000 -10000000
     } {
-	lappend tt [binary encode hex [msgpack pack uint32 $v]]
+            binary encode hex [msgpack pack uint32 $v]
     }
-    set tt
 } -result {01 00 ceffffffff 20 21 ceffffffe0 ceffffffdf 7f cc80 ceffffff81\
            ceffffff80 cd0100 cd0101 ceffffff01 ceffffff00 cd7fff cd8000\
            ceffff8001 ceffff8000 cdffff ce00010000 ceffff0001 ceffff0000\
            ce00989680 ceff676980}
 
 tcltest::test int64 int64 -body {
-    set tt {}
-    foreach v {
+    flatmap v {
         1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
         -32767 -32768 65535 65536 -65535 -65536 2147483647 2147483648
         -2147483647 -2147483648 4294967295 4294967296 -4294967295 -4294967296
         1000000000000000 -1000000000000000
     } {
-	lappend tt [binary encode hex [msgpack pack int64 $v]]
+            binary encode hex [msgpack pack int64 $v]
     }
-    set tt
 } -result {01 00 ff 20 21 e0 d0df 7f cc80 d081 d080 cd0100 cd0101 d1ff01\
            d1ff00 cd7fff cd8000 d18001 d18000 cdffff ce00010000 d2ffff0001\
            d2ffff0000 ce7fffffff ce80000000 d280000001 d280000000 ceffffffff\
@@ -177,16 +177,14 @@ tcltest::test int64 int64 -body {
            cf00038d7ea4c68000 d3fffc72815b398000}
 
 tcltest::test uint64 uint64 -body {
-    set tt {}
-    foreach v {
+    flatmap v {
         1 0 -1 32 33 -32 -33 127 128 -127 -128 256 257 -255 -256 32767 32768
         -32767 -32768 65535 65536 -65535 -65536 2147483647 2147483648
         -2147483647 -2147483648 4294967295 4294967296 -4294967295 -4294967296
         1000000000000000 -1000000000000000
     } {
-	lappend tt [binary encode hex [msgpack pack uint64 $v]]
+            binary encode hex [msgpack pack uint64 $v]
     }
-    set tt
 } -result {01 00 cfffffffffffffffff 20 21 cfffffffffffffffe0\
            cfffffffffffffffdf 7f cc80 cfffffffffffffff81 cfffffffffffffff80\
            cd0100 cd0101 cfffffffffffffff01 cfffffffffffffff00 cd7fff cd8000\
@@ -197,20 +195,16 @@ tcltest::test uint64 uint64 -body {
            cffffc72815b398000}
 
 
-tcltest::test float float -body {
-    set tt {}
-    foreach v {1 2 3.1415 123456678 6.54e3} {
-        lappend tt [binary encode hex [msgpack pack float32 $v]]
+tcltest::test float32 float32 -body {
+    flatmap v {1 2 3.1415 123456678 6.54e3} {
+        binary encode hex [msgpack pack float32 $v]
     }
-    set tt
 } -result {ca3f800000 ca40000000 ca40490e56 ca4ceb7995 ca45cc6000}
 
-tcltest::test double double -body {
-    set tt {}
-    foreach v {1 2 3.1415 123456678 6.54e3} {
-	lappend tt [binary encode hex [msgpack pack float64 $v]]
+tcltest::test float64 float64 -body {
+    flatmap v {1 2 3.1415 123456678 6.54e3} {
+        binary encode hex [msgpack pack float64 $v]
     }
-    set tt
 } -result {cb3ff0000000000000 cb4000000000000000 cb400921cac083126f\
            cb419d6f3298000000 cb40b98c0000000000}
 
@@ -218,24 +212,22 @@ tcltest::test double double -body {
 # One can't use -match regexp here because it is limited to 255 repetitions.
 # We weep for your terminal if this test fails.
 tcltest::test bin bin -body {
-    set tt {}
-    foreach v [list \
-        {} a bb ccc dddd [string repeat e 31] [string repeat e 32] \
-        [string repeat f 33] [string repeat g 65535] [string repeat h 65536] \
+    flatmap v [list \
+        {} a bb ccc dddd [string repeat e 255] [string repeat e 256] \
+        [string repeat f 257] [string repeat g 65535] [string repeat h 65536] \
         [string repeat i 100000] \
     ] {
-	lappend tt [binary encode hex [msgpack pack bin $v]]
+            binary encode hex [msgpack pack bin $v]
     }
-    set tt
 } -result [list \
     c400 \
     c40161 \
     c4026262 \
     c403636363 \
     c40464646464 \
-    c41f[string repeat 65 31] \
-    c420[string repeat 65 32] \
-    c421[string repeat 66 33] \
+    c4ff[string repeat 65 255] \
+    c50100[string repeat 65 256] \
+    c50101[string repeat 66 257] \
     c5ffff[string repeat 67 65535] \
     c600010000[string repeat 68 65536] \
     c6000186a0[string repeat 69 100000] \
@@ -255,15 +247,13 @@ tcltest::test bin-unpack-32 bin -body {
 
 
 tcltest::test str str -body {
-    set tt {}
-    foreach v [list \
+    flatmap v [list \
         {} a bb ccc dddd [string repeat e 31] [string repeat e 32] \
         [string repeat f 33] [string repeat g 65535] [string repeat h 65536] \
         [string repeat i 100000] \
     ] {
-	lappend tt [binary encode hex [msgpack pack str $v]]
+            binary encode hex [msgpack pack str $v]
     }
-    set tt
 } -result [list \
     a0 \
     a161 \
@@ -314,12 +304,10 @@ tcltest::test array-list array-list -body {
 
 
 tcltest::test map-dict-tcl_array-10-31-32 map-dict-tcl_array-10-31-32 -body {
-    set res {}
-    foreach n {10 31 32} {
-	lassign [test_map $n] eq1 eq2 tt
-        lappend res $eq1 $eq2 [binary encode hex $tt]
+    flatmap n {10 31 32} {
+        lassign [test_map $n] eq1 eq2 tt
+        list $eq1 $eq2 [binary encode hex $tt]
     }
-    set res
 } -result [list \
     1 1 8ad2ffd55d56d2ffff2b7ed2ff8c8568d2ffff2b7ed2ff6dae06d2ffff2b7e00d2ffff2b7ece00158880d2ffff2b7ece003ee260d2ffff2b7ece00643f89d2ffff2b7ece008065f5d2ffff2b7ece008abf6ed2ffff2b7ece0096f6ced2ffff2b7ec3 \
     1 1 de001fd2fffea63fd2ffff622dd2ffebce03d2ffff622dd2ffd55d56d2ffff622dd2ffd411c7d2ffff622dd2ffae201fd2ffff622dd2ffacfd2dd2ffff622dd2ff9abcced2ffff622dd2ff8d6890d2ffff622dd2ff8c8568d2ffff622dd2ff7ee084d2ffff622dd2ff75d1d9d2ffff622dd2ff6dae06d2ffff622dd2ff6d4d6ad2ffff622dd2ff693d04d2ffff622dd2ff6769e2d2ffff622d00d2ffff622dce00158880d2ffff622dce0016de94d2ffff622dce00295641d2ffff622dce003ee260d2ffff622dce00401cc6d2ffff622dce006339ded2ffff622dce00643f89d2ffff622dce00745b70d2ffff622dce007fa9dcd2ffff622dce008065f5d2ffff622dce008abf6ed2ffff622dce008b4decd2ffff622dce0091ee6fd2ffff622dce0096f6ced2ffff622dce00972799d2ffff622dc3 \
@@ -353,6 +341,360 @@ tcltest::test nested-1 nested -body {
 tcltest::test nested-2 nested -body {
     msgpack unpack [binary decode hex 82a7636c69656e747382a46461746194c40567616d6d61c40564656c74610102a5686f73747392c405616c706861c4056f6d656761a8646174616261736583ae636f6e6e656374696f6e5f6d6178cd1388a7656e61626c6564c3a5706f72747393cd1f41cd1f41cd1f42]
 } -result {{map {{str clients} {map {{str data} {array {{bin gamma} {bin delta} {integer 1} {integer 2}}} {str hosts} {array {{bin alpha} {bin omega}}}}} {str database} {map {{str connection_max} {integer 5000} {str enabled} {boolean 1} {str ports} {array {{integer 8001} {integer 8001} {integer 8002}}}}}}}}
+
+
+tcltest::test fix_ext1 fix_ext1 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext1 42 !]
+    lappend enc [msgpack pack fix_ext1 -5 \xFF]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d42a21 d4fbff {{ext 42 !}} {{ext -5 \xFF}}"
+
+tcltest::test fix_ext2 fix_ext2 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext2 42 !]
+    lappend enc [msgpack pack fix_ext2 3 \xCA\xFE]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d52a2100 d503cafe {{ext 42 !\x00}} {{ext 3 \xCA\xFE}}"
+
+tcltest::test fix_ext4 fix_ext4 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext4 42 !]
+    lappend enc [msgpack pack fix_ext4 3 \xCA\xFE]
+    lappend enc [msgpack pack fix_ext4 10 \x12\x34\x56\x78]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d62a21000000 d603cafe0000 d60a12345678\
+           {{ext 42 !\x00\x00\x00}} {{ext 3 \xCA\xFE\x00\x00}}\
+           {{ext 10 \x12\x34\x56\x78}}"
+
+tcltest::test fix_ext8 fix_ext8 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext8 3 \xCA\xFE]
+    lappend enc [msgpack pack fix_ext8 10 \x01\x23\x45\x67\x89\xAB\xCD\xEF]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d703cafe000000000000 d70a0123456789abcdef\
+           {{ext 3 \xCA\xFE\0\0\0\0\0\0}}\
+           {{ext 10 \x01\x23\x45\x67\x89\xAB\xCD\xEF}}"
+
+tcltest::test fix_ext16 fix_ext16 -body {
+    set enc {}
+    lappend enc [msgpack pack fix_ext16 3 \xCA\xFE]
+    lappend enc [msgpack pack fix_ext16 11 [string repeat AB 16]]
+
+    set dec [lmap x $enc {msgpack unpack $x}]
+
+    concat [lmap x $enc {binary encode hex $x}] $dec
+} -result "d803cafe0000000000000000000000000000\
+           d80b41424142414241424142414241424142\
+           {{ext 3 \xCA\xFE\0\0\0\0\0\0\0\0\0\0\0\0\0\0}}\
+           {{ext 11 ABABABABABABABAB}}"
+
+
+tcltest::test ext ext -body {
+    flatmap v [list \
+        {} a bb ccc dddd [string repeat e 255] [string repeat e 256] \
+        [string repeat f 257] [string repeat g 65535] [string repeat h 65536] \
+        [string repeat i 100000] \
+    ] {
+        binary encode hex [msgpack pack ext 127 $v]
+    }
+} -result [list \
+    c7007f \
+    c7017f61 \
+    c7027f6262 \
+    c7037f636363 \
+    c7047f64646464 \
+    c7ff7f[string repeat 65 255] \
+    c801007f[string repeat 65 256] \
+    c801017f[string repeat 66 257] \
+    c8ffff7f[string repeat 67 65535] \
+    c9000100007f[string repeat 68 65536] \
+    c9000186a07f[string repeat 69 100000] \
+]
+
+
+tcltest::test ext-timestamp-1 timestamp32 -body {
+    msgpack unpack [binary decode hex 81a56576656e7482a56c6162656caa74696d6520626567616ea464617465d6ff00000000]
+} -result {{map {{str event} {map {{str label} {str {time began}}\
+                                   {str date} {timestamp 0 0}}}}}}
+
+tcltest::test ext-timestamp-2 timestamp32 -body {
+    set enc [msgpack pack timestamp32 1598459831]
+    list [binary encode hex $enc] [msgpack unpack $enc]
+} -result {d6ff5f468fb7 {{timestamp 1598459831 0}}}
+
+tcltest::test ext-timestamp-3 timestamp64 -body {
+    set enc {}
+    lappend enc [msgpack pack timestamp64 1598459831 0]
+    lappend enc [msgpack pack timestamp64 1598459831 123456789]
+    lappend enc [msgpack pack timestamp64 1598459831 999999999]
+
+    flatmap x $enc {
+        list [binary encode hex $x] [msgpack unpack $x]
+    }
+} -result {d7ff000000005f468fb7 {{timestamp 1598459831 0}}\
+           d7ff1d6f34545f468fb7 {{timestamp 1598459831 123456789}}\
+           d7ffee6b27fc5f468fb7 {{timestamp 1598459831 999999999}}}
+
+tcltest::test ext-timestamp-4 timestamp96 -body {
+    set enc {}
+    lappend enc [msgpack pack timestamp96 1598459831 0]
+    lappend enc [msgpack pack timestamp96 1598459831 123456789]
+    lappend enc [msgpack pack timestamp96 1598459831 999999999]
+
+    set tt {}
+    flatmap x $enc {
+        list [binary encode hex $x] [msgpack unpack $x]
+    }
+} -result {c70cff00000000000000005f468fb7 {{timestamp 1598459831 0}}\
+           c70cff075bcd15000000005f468fb7 {{timestamp 1598459831 123456789}}\
+           c70cff3b9ac9ff000000005f468fb7 {{timestamp 1598459831 999999999}}}
+
+tcltest::test ext-timestamp-5 {milliseconds and microseconds} -body {
+    set enc {}
+    lappend enc [msgpack pack milliseconds 1598463308768]
+    lappend enc [msgpack pack microseconds 1598463300642468]
+
+    flatmap x $enc {
+        list [binary encode hex $x] [msgpack unpack $x]
+    }
+} -result {c70cff2dc6c000000000005f469d4c\
+           {{timestamp 1598463308 768000000}}\
+           c70cff264b48a0000000005f469d44\
+           {{timestamp 1598463300 642468000}}}
+
+
+tcltest::test ext-unpacker-1 {Add custom unpacker} -setup {
+    set up [msgpack::unpacker new]
+} -cleanup {
+    catch { $up destroy }
+    rename ::xor {}
+} -body {
+    proc ::xor {n type data} {
+        if {$type != 100} { error [list wrong type: $type] }
+
+        set res {}
+        foreach b [split $data {}] {
+            set code [scan $b %c]
+            append res [format %c [expr { $code ^ $n }]]
+        }
+
+        return [list encrypted $res]
+    }
+
+    $up set_ext_unpacker 99 {::xor 42}
+    $up set_ext_unpacker 100 {::xor 5}
+    $up set_ext_unpacker 1000 {::xor 0}
+
+    $up unpack_string [msgpack pack ext 100 M`iij$]
+} -result {{encrypted Hello!}}
+
+tcltest::test ext-unpacker-2 {Remove timestamp unpacker} -setup {
+    set up [msgpack::unpacker new]
+} -cleanup {
+    catch { $up destroy }
+} -body {
+    $up set_ext_unpacker -1 {}
+    $up unpack_string [msgpack pack timestamp32 1598459831]
+} -result "{ext -1 \x5f\x46\x8f\xb7}"
+
+tcltest::test ext-unpacker-3 {Get ext unpackers} -setup {
+    set up [msgpack::unpacker new]
+} -cleanup {
+    catch { $up destroy }
+} -body {
+    set tt {}
+    lappend tt [$up set_ext_unpacker]
+    lappend tt [$up set_ext_unpacker -1]
+} -match regexp -result {\s*-1 \{apply \{\{type data\}.*apply}
+
+
+tcltest::test pack-unknown-type pack-unknown-type -body {
+    msgpack pack foo 99
+} -returnCodes error -result {unknown type: foo}
+
+
+
+tcltest::test unpack-not-long-enough-array unpack-not-long-enough -body {
+    msgpack unpack \xDC\x00\x05\xFF
+} -match glob -returnCodes error -result {input string not long enough*}
+
+tcltest::test unpack-not-long-enough-bin unpack-not-long-enough -body {
+    msgpack unpack \xC4\x05\xFF
+} -returnCodes error -result {input string not long enough,\
+                              need 5 byte(s), only 1 left}
+
+tcltest::test unpack-not-long-enough-ext unpack-not-long-enough -body {
+    msgpack unpack \xC7\x05\x01\xFF
+} -returnCodes error -result {input string not long enough,\
+                              need 5 byte(s), only 1 left}
+
+tcltest::test unpack-not-long-enough-str unpack-not-long-enough -body {
+    msgpack unpack \xD9\x05\xFF
+} -returnCodes error -result {input string not long enough,\
+                              need 5 byte(s), only 1 left}
+
+proc mts_unhex hex {
+    binary decode hex [string map {- {}} $hex]
+}
+
+proc mts_test_file filename {
+    set ch [open [file join $::mtsPath $filename] r]
+    chan configure $ch -encoding utf-8
+    set yaml [read $ch]
+    close $ch
+
+    return $yaml
+}
+
+proc mts_test {filename {key %AUTO%}} {
+    set tests [yaml::yaml2dict [mts_test_file $filename]]
+
+    flatmap test $tests {
+        set ref [dict get $test [if {$key eq {%AUTO%}} {
+            lsearch -inline -not [dict keys $test] msgpack
+        } else {
+            lindex $key
+        }]]
+
+        set unpacked [flatmap x [dict get $test msgpack] {
+            set packed [mts_unhex $x]
+            msgpack unpack $packed
+        }]
+
+        list $ref $unpacked
+    }
+}
+
+tcltest::test msgpack-test-suite-array {} -body {
+    set filename 40.array.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        foreach value $values {
+            set a [lmap x [lindex $value 1] { lindex $x 1 }]
+            if {$a ne $ref} {
+                error [list unpacked array $a ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-binary {} -body {
+    set filename 12.binary.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        set ref [mts_unhex $ref]
+        foreach value $values {
+            set b [lindex $value 1]
+            if {$b ne $ref} {
+                error [list unpacked binary $b ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-ext {} -body {
+    set filename 60.ext.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        lset ref 1 [mts_unhex [lindex $ref 1]]
+        foreach value $values {
+            set e [lrange $value 1 end]
+            if {$e ne $ref} {
+                error [list unpacked binary $e ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-nested {} -body {
+    set filename 42.nested.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        foreach value $values {
+            set m [lmap x [lindex $value 1] { lindex $x 1 }]
+            if {$m ne $ref} {
+                error [list unpacked array $m ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-number {} -body {
+    foreach filename {
+        20.number-positive.yaml
+        21.number-negative.yaml
+        22.number-float.yaml
+        23.number-bignum.yaml
+    } {
+        foreach {ref values} [mts_test $filename] {
+            foreach value $values {
+                set n [lindex $value 1]
+                if {$n != $ref} {
+                    error [list unpacked number $n != $ref in $filename]
+                }
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-string {} -body {
+    foreach filename {
+        30.string-ascii.yaml
+        31.string-utf8.yaml
+        32.string-emoji.yaml
+    } {
+        foreach {ref values} [mts_test $filename] {
+            foreach value $values {
+                set s [lindex $value 1]
+                if {$s ne $ref} {
+                    error [list unpacked string $s ne $ref in $filename]
+                }
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-timestamp {} -body {
+    set filename 50.timestamp.yaml
+
+    foreach {ref values} [mts_test $filename] {
+        foreach value $values {
+            set t [lrange $value 1 2]
+            if {$t ne $ref} {
+                error [list unpacked timestamp $t ne $ref in $filename]
+            }
+        }
+    }
+} -result {} -constraints yaml
+
+tcltest::test msgpack-test-suite-pack-utf8 {} -body {
+    set tests [yaml::yaml2dict [mts_test_file 31.string-utf8.yaml]]
+
+    flatmap test $tests {
+        set ref [dict get $test string]
+        set hex [flatmap x [dict get $test msgpack] {
+            string map {- {}} $x
+        }]
+        set hexPacked [binary encode hex [msgpack pack str $ref]]
+
+        if {$hexPacked ni $hex} {
+            error [list packed $ref eq $hexPacked not in list $hex]
+        }
+    }
+} -result {} -constraints yaml
 
 
 # Exit with a nonzero status if there are failed tests.

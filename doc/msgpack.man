@@ -1,6 +1,7 @@
 [comment {-*- tcl -*- doctools manpage}]
 [manpage_begin msgpack n 2.0.0]
-[copyright {Jos Decoster <jos.decoster@gmail.com>}]
+[copyright {2013 Jos Decoster <jos.decoster@gmail.com>}]
+[copyright {2020 D. Bohdan <https://dbohdan.com/>}]
 [moddesc {A pure Tcl implementation of the MessagePack object serialization library}]
 [category  {Serialization}]
 [keywords {MessagePack}]
@@ -11,8 +12,8 @@
 [require msgpack [opt 2.0.0]]
 [description]
 
-The [term msgpack] package is a pure Tcl implementation the MessagePack object
-serialization library. You can find the code at GitHub:
+The [term msgpack] package is a pure Tcl implementation of the MessagePack
+object serialization library. You can find the code at GitHub:
 [uri https://github.com/jdc8/msgpack]. MessagePack can be found at
 [uri http://msgpack.org/].
 

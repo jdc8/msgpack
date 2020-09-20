@@ -11,6 +11,13 @@ implementing the MessagePack unpacking.
 
 Destroy the unpacker object.
 
+[call [arg unpackerObject] [method set_ext_unpacker] [opt [arg type]] [opt [arg script]]]
+
+Set the handler for an extension type.  When the unpacker encounters extension
+type [arg type], it will call [arg script] with the type and the data as its
+arguments.  Omit [arg script] or [arg script] and [arg type] to get handlers.
+Set the handler for a type to an empty string to disable it.
+
 [call [arg unpackerObject] [method unpack_stream] [arg istream] [arg callback]]
 
 Unpack data read from the [arg istream] argument. The [arg callback] command is
@@ -50,15 +57,17 @@ Type information found in the unpacked MessagePack objects can be one of the
 following:
 
 [list_begin options]
-[opt_def nil]
+[opt_def array]
+[opt_def bin]
 [opt_def boolean]
-[opt_def integer]
+[opt_def ext]
 [opt_def float32]
 [opt_def float64]
-[opt_def bin]
-[opt_def str]
-[opt_def array]
+[opt_def integer]
 [opt_def map]
+[opt_def nil]
+[opt_def str]
+[opt_def timestamp]
 [list_end]
 
 Values can be nested type/value list.

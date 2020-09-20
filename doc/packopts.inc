@@ -27,9 +27,33 @@ Add a dict to the packed data. This is equivalent to calling method
 method [method {pack keyType}] and method [method {pack valueType}]
 for each key/value pair in the dict.
 
+[opt_def [method ext] "[arg type] [arg bytes]"]
+
+Add a byte array of a chosen extension type to the packed data.
+
 [opt_def [method false]]
 
 Add a boolean with value [cmd false] to the packed data.
+
+[opt_def [method fix_ext1] "[arg type] [arg byte]"]
+
+Add 1 byte of a chosen extension type to the packed data.
+
+[opt_def [method fix_ext2] "[arg type] [arg bytes]"]
+
+Add 2 bytes of a chosen extension type to the packed data.
+
+[opt_def [method fix_ext4] "[arg type] [arg bytes]"]
+
+Add 4 bytes of a chosen extension type to the packed data.
+
+[opt_def [method fix_ext8] "[arg type] [arg bytes]"]
+
+Add 8 bytes of a chosen extension type to the packed data.
+
+[opt_def [method fix_ext16] "[arg type] [arg bytes]"]
+
+Add 16 bytes of a chosen extension type to the packed data.
 
 [opt_def [method fix_int8] [arg data]]
 
@@ -65,7 +89,7 @@ Add a 64 bit unsigned integer to the packed data.
 
 [opt_def [method float32] [arg data]]
 
-add a 32-bit float to the packed data.
+Add a 32-bit float to the packed data.
 
 [opt_def [method float64] [arg data]]
 
@@ -110,6 +134,14 @@ Add a long long integer to the packed data.
 Add the map size to the packed data. Must be followed by [cmd size] pairs of
 calls to method [method pack] to add the keys and values to the packed data.
 
+[opt_def [method microseconds] [arg micros]]
+
+Add a microsecond timestamp to the packed data as a [method timestamp96].
+
+[opt_def [method milliseconds] [arg millis]]
+
+Add a millisecond timestamp to the packed data as a [method timestamp96].
+
 [opt_def [method nil]]
 
 Add a nil to the packed data.
@@ -128,6 +160,21 @@ Add a Tcl array to the packed data. This is equivalent to calling method
 [method {pack map}] with the array size as argument, followed by calling
 method [method {pack keyType}] and method [method {pack valueType}]
 for each key/value pair in the array.
+
+[opt_def [method timestamp32] [arg seconds]]
+
+Add a 32-bit unsigned timestamp to the packed data.
+
+[opt_def [method timestamp64] "[arg seconds] [arg nanoseconds]"]
+
+Add a 64-bit timestamp (34 bits for seconds, 30 bits for nanoseconds,
+both unsigned) to the packed data.  Nanoseconds must not exceed 999999999.
+
+[opt_def [method timestamp96] "[arg seconds] [arg nanoseconds]"]
+
+Add a 96-bit timestamp (64 bits for seconds, signed, and 32 bits for
+nanoseconds, unsigned) to the packed data.  Nanoseconds must not exceed
+999999999.
 
 [opt_def [method true]]
 

@@ -105,6 +105,37 @@ oo::class create msgpack::packer {
                     append data [my pack fix_uint64 $value]
                 }
             }
+            fix_ext1 {
+                # $value is the extension type and $value1 is the byte array.
+                append data [binary format cca1 0xD4 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext2 {
+                append data [binary format cca2 0xD5 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext4 {
+                append data [binary format cca4 0xD6 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext8 {
+                append data [binary format cca8 0xD7 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
+            fix_ext16 {
+                append data [binary format cca16 0xD8 \
+                    [expr {$value & 0xFF}] \
+                    $value1
+                ]
+            }
             fix_int8 { append data [binary format cc 0xD0 [expr {$value & 0xFF}]] }
             fix_int16 { append data [binary format cS 0xD1 [expr {$value & 0xFFFF}]] }
             fix_int32 { append data [binary format cI 0xD2 [expr {$value & 0xFFFFFFFF}]] }
@@ -171,6 +202,7 @@ oo::class create msgpack::packer {
                 }
             }
             str {
+                set value [encoding convertto utf-8 $value]
                 set n [string length $value]
                 if {$n < 32} {
                     append data [binary format ca* [expr {0xA0 | $n}] $value]
@@ -182,6 +214,57 @@ oo::class create msgpack::packer {
                     append data [binary format cIa* 0xDB $n $value]
                 }
             }
+            ext {
+                # $value is the extension type and $value1 is the byte array.
+                set n [string length $value1]
+                if {$n < 256} {
+                    append data [binary format ccca* 0xC7 $n $value $value1]
+                } elseif {$n < 65536} {
+                    append data [binary format cSca* 0xC8 $n $value $value1]
+                } else {
+                    append data [binary format cIca* 0xC9 $n $value $value1]
+                }
+            }
+            timestamp32 {
+                append data [my pack fix_ext4 -1 [binary format I [expr {
+                    $value & 0xFFFFFFFF
+                }]]]
+            }
+            timestamp64 {
+                # $value is seconds (34 bits unsigned), $value1 is nanoseconds
+                # (30 bits unsigned).
+                if {$value1 > 999999999} { error {nanoseconds exceed 999999999} }
+
+                append data [my pack fix_ext8 -1 [binary format W [expr {
+                    (($value1 << 34) | $value) & 0xFFFFFFFFFFFFFFFF
+                }]]]
+            }
+            timestamp96 {
+                # $value is seconds (64 bits signed), $value1 is nanoseconds
+                # (32 bits unsigned)
+                if {$value1 > 999999999} { error {nanoseconds exceed 999999999} }
+
+                append data [my pack ext -1 [binary format IW [expr {
+                    $value1 & 0xFFFFFFFF
+                }] $value]]
+            }
+            milliseconds {
+                append data [my pack timestamp96 [expr {
+                    round($value / 1000)
+                }] [expr {
+                    $value % 1000 * 1000000
+                }]]
+            }
+            microseconds {
+                append data [my pack timestamp96 [expr {
+                    round($value / 1000000)
+                }] [expr {
+                    $value % 1000000 * 1000
+                }]]
+            }
+            default {
+                error [list unknown type: $type]
+            }
         }
         return
     }
@@ -189,15 +272,66 @@ oo::class create msgpack::packer {
 
 oo::class create msgpack::unpacker {
 
-    variable data stream callback coro
+    variable data stream callback coro ext_unpackers
 
     constructor {} {
+        set ext_unpackers {
+            -1 {apply {{type data} {
+                set len [string length $data]
+                if {$len == 4} {
+                    binary scan $data I s
+                    set s [expr { $s & 0xFFFFFFFF }]
+
+                    return [list timestamp $s 0]
+                } elseif {$len == 8} {
+                    binary scan $data W t
+                    set t [expr { $t & 0xFFFFFFFFFFFFFFFF }]
+
+                    set ns [expr { $t >> 34 }]
+                    set s [expr { $t & 0X00000003FFFFFFFF }]
+
+                    return [list timestamp $s $ns]
+                } elseif {$len == 12} {
+                    binary scan $data IW ns s
+
+                    set ns [expr { $ns & 0xFFFFFFFFFFFFFFFF }]
+                    return [list timestamp $s $ns]
+                } else {
+                    error [list can't decode timestamp of length $len]
+                }
+            }}}
+        }
     }
 
     destructor {
         if {[info exists coro]} {
             rename $coro {}
         }
+    }
+
+    method set_ext_unpacker args {
+        lassign $args type script
+        switch [llength $args] {
+            0 { return $ext_unpackers }
+            1 { return [dict get $ext_unpackers $type] }
+            2 {
+                dict set ext_unpackers $type $script
+                return {}
+            }
+            default {
+                error "wrong # args: should be
+                       \"set_ext_unpacker ?type? ?script?\""
+            }
+        }
+    }
+
+    method unpack_ext {type data} {
+        if {[dict exists $ext_unpackers $type]
+            && [dict get $ext_unpackers $type] ne {}} {
+            return [{*}[dict get $ext_unpackers $type] $type $data]
+        }
+
+        return [list ext $type $data]
     }
 
     method unpack_stream {istream icallback} {
@@ -285,7 +419,7 @@ oo::class create msgpack::unpacker {
                 set n [expr {$tc & 0x1F}]
                 my $need_proc $n
                 binary scan $data a$n c
-                lappend l [list str $c]
+                lappend l [list str [encoding convertfrom utf-8 $c]]
                 set data [string range $data $n end]
             } else {
                 if {$tc == 0xC0} {
@@ -327,7 +461,37 @@ oo::class create msgpack::unpacker {
                     binary scan $data a$n c
                     lappend l [list bin $c]
                     set data [string range $data $n end]
-                } elseif {$tc == 0xCA} {
+                } elseif {$tc == 0xC7} {
+                    # ext 8
+                    my $need_proc 2
+                    binary scan $data cc n ext_type
+                    set n [expr {$n & 0xFF}]
+                    set data [string range $data 2 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [my unpack_ext $ext_type $c]
+                    set data [string range $data $n end]
+                } elseif {$tc == 0xC8} {
+                    # ext 16
+                    my $need_proc 3
+                    binary scan $data Sc n ext_type
+                    set n [expr {$n & 0xFFFF}]
+                    set data [string range $data 3 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [my unpack_ext $ext_type $c]
+                    set data [string range $data $n end]
+                } elseif {$tc == 0xC9} {
+                    # ext 32
+                    my $need_proc 5
+                    binary scan $data Ic n ext_type
+                    set n [expr {$n & 0xFFFFFFFF}]
+                    set data [string range $data 5 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [my unpack_ext $ext_type $c]
+                    set data [string range $data $n end]
+                 } elseif {$tc == 0xCA} {
                     # float32
                     my $need_proc 4
                     binary scan $data R c
@@ -387,6 +551,46 @@ oo::class create msgpack::unpacker {
                     binary scan $data W c
                     set data [string range $data 8 end]
                     lappend l [list integer $c]
+                } elseif {$tc == 0xD4} {
+                    # fixext 1
+                    my $need_proc 2
+                    binary scan $data ca1 ext_type c
+                    set data [string range $data 2 end]
+                    lappend l [list ext $ext_type $c]
+                } elseif {$tc == 0xD5} {
+                    # fixext 2
+                    my $need_proc 3
+                    binary scan $data ca2 ext_type c
+                    set data [string range $data 3 end]
+                    lappend l [my unpack_ext $ext_type $c]
+                } elseif {$tc == 0xD6} {
+                    # fixext 4
+                    my $need_proc 5
+                    binary scan $data ca4 ext_type c
+                    set data [string range $data 5 end]
+                    lappend l [my unpack_ext $ext_type $c]
+                } elseif {$tc == 0xD7} {
+                    # fixext 8
+                    my $need_proc 9
+                    binary scan $data ca8 ext_type c
+                    set data [string range $data 9 end]
+                    lappend l [my unpack_ext $ext_type $c]
+                } elseif {$tc == 0xD8} {
+                    # fixext 16
+                    my $need_proc 17
+                    binary scan $data ca16 ext_type c
+                    set data [string range $data 17 end]
+                    lappend l [my unpack_ext $ext_type $c]
+                } elseif {$tc == 0xD9} {
+                    # string 8
+                    my $need_proc 1
+                    binary scan $data c n
+                    set n [expr {$n & 0xFF}]
+                    set data [string range $data 1 end]
+                    my $need_proc $n
+                    binary scan $data a$n c
+                    lappend l [list str [encoding convertfrom utf-8 $c]]
+                    set data [string range $data $n end]
                 } elseif {$tc == 0xDA} {
                     # string 16
                     my $need_proc 2
@@ -395,7 +599,7 @@ oo::class create msgpack::unpacker {
                     set data [string range $data 2 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [list str $c]
+                    lappend l [list str [encoding convertfrom utf-8 $c]]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xDB} {
                     # string 32
@@ -405,7 +609,7 @@ oo::class create msgpack::unpacker {
                     set data [string range $data 4 end]
                     my $need_proc $n
                     binary scan $data a$n c
-                    lappend l [list str $c]
+                    lappend l [list str [encoding convertfrom utf-8 $c]]
                     set data [string range $data $n end]
                 } elseif {$tc == 0xDC} {
                     # array 16
@@ -453,6 +657,8 @@ oo::class create msgpack::unpacker {
                         lappend a {*}[my unpack_coro 1 $coro]
                     }
                     lappend l [list map $a]
+                } else {
+                    error [list unknown type: $tc]
                 }
             }
             if {$nested} {
