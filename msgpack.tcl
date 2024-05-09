@@ -1,4 +1,4 @@
-package require Tcl 8.6
+package require Tcl 8.6 9
 package provide msgpack 2.0.0
 
 namespace eval msgpack {}
