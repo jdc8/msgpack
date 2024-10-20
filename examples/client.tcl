@@ -8,7 +8,7 @@ set byte_per_byte 0
 
 # Open the connection and configure the socket
 set s [socket localhost 12345]
-chan configure $s -blocking 0 -buffering none -translation binary -encoding binary
+chan configure $s -blocking 0 -buffering none -translation binary
 
 # Create a packer
 set p [msgpack::packer new]

@@ -340,7 +340,7 @@ oo::class create msgpack::unpacker {
         set stream $istream
         set callback $icallback
         coroutine $coro [self] unpack_coro 0 1
-        chan configure $stream -blocking 0 -buffering none -translation binary -encoding binary
+        chan configure $stream -blocking 0 -buffering none -translation binary
         chan event $stream readable $coro
     }
 
